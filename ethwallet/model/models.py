@@ -1,0 +1,66 @@
+__author__ = 'andrew.shvv@gmail.com'
+
+import hashlib
+import os
+
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
+from core.utils.logging import getPrettyLogger
+from ethwallet import constants
+
+logger = getPrettyLogger(__name__)
+
+
+def generate_token():
+    return hashlib.sha1(os.urandom(128)).hexdigest()
+
+
+class ClientUser(AbstractUser):
+    api_key = models.CharField(max_length=40, default=generate_token)
+    api_secret = models.CharField(max_length=40, default=generate_token)
+    webhook = models.CharField(max_length=40)
+
+
+class Address(models.Model):
+    """
+        Comment me!
+    """
+
+    address = models.CharField(max_length=50)
+
+    created = models.DateTimeField(auto_now_add=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="addresses")
+
+    class Meta():
+        unique_together = ('address',)
+
+    def update(self, **kwargs):
+        # update() is converted directly to an SQL statement; it doesn't exec save() on the model
+        # instances, and so the pre_save and post_save signals aren't emitted.
+        Address.objects.filter(pk=self.pk).update(**kwargs)
+
+
+class Transaction(models.Model):
+    from_address = models.CharField(max_length=50)
+    to_address = models.CharField(max_length=50)
+    value = models.DecimalField(max_digits=constants.ACCOUNT_MAX_DIGITS,
+                                decimal_places=constants.DECIMAL_PLACES,
+                                default=0)
+    block_number = models.IntegerField()
+    owner = models.ForeignKey(Address, related_name="transactions")
+    notified = models.BooleanField(default=False)
+    hash = models.CharField(max_length=100)
+
+    class Meta():
+        unique_together = ('hash',)
+
+
+class Block(models.Model):
+    number = models.IntegerField()
+    created = models.DateTimeField(auto_now_add=True)
+    hash = models.CharField(max_length=100)
+
+    class Meta():
+        unique_together = ('hash',)
