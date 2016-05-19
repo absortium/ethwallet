@@ -31,7 +31,7 @@ class AddressTest(EthWalletUnitTest):
         hacker.save()
 
         # Authenticate hacker
-        self.client.init_user(hacker)
+        self.client.force_authenticate(hacker)
 
         # Hacker trying access info of normal user address
         url = '/addresses/{pk}/'.format(pk=address['pk'])
@@ -46,7 +46,7 @@ class AddressTest(EthWalletUnitTest):
         response = self.client.delete(url, format='json')
         self.assertEqual(response.status_code, HTTP_405_METHOD_NOT_ALLOWED)
 
-        # User trying to delete not created account
+        # User trying to get not created account
         url = '/addresses/{pk}/'.format(pk=trash_address_pk)
         response = self.client.get(url, format='json')
         self.assertEqual(response.status_code, HTTP_404_NOT_FOUND)

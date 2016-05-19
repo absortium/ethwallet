@@ -23,9 +23,6 @@ class AddressViewSet(mixins.CreateModelMixin,
                      viewsets.GenericViewSet):
     serializer_class = AddressSerializer
 
-    def get_object(self):
-        pass
-
     def get_queryset(self):
         return self.request.user.addresses.all()
 
@@ -59,8 +56,13 @@ class AddressViewSet(mixins.CreateModelMixin,
             password = self.get_address_password(address.key)
 
             client = get_rpc_client(host=settings.ETHNODE_URL)
-            client.personal_unlockAccount(address=from_address, passphrase=password)
-            client.eth_sendTransaction(from_address=from_address, to_address=to_address, value=amount)
+            balance = client.eth_getBalance(address=to_address)
+
+            if balance >= amount:
+                client.personal_unlockAccount(address=from_address, passphrase=password)
+                client.eth_sendTransaction(from_address=from_address, to_address=to_address, value=amount)
+            else:
+                raise ValidationError("Not enough money")
 
         except Address.DoesNotExist:
             raise PermissionDenied('This address is not found or not belongs to this user.')

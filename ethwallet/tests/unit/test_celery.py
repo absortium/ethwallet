@@ -97,7 +97,7 @@ class EthnodeTest(EthWalletUnitTest):
         transactions = Transaction.objects.all()
         self.assertEqual(len(transactions), 5)
 
-    def test_transaction_already_exist(self):
+    def test_not_enough_money(self):
         pass
 
     def test_the_transaction_notification(self):

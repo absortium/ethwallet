@@ -40,6 +40,18 @@ class RPCClientMockMixin():
 
 
 class MockEthRPCClient():
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+
+    def eth_getBalance(self, *args, **kwargs):
+        return 1000
+
+    def personal_unlockAccount(self, *args, **kwargs):
+        pass
+
+    def eth_sendTransaction(self, *args, **kwargs):
+        return "some_transaction_hash"
+
     def eth_getBlockByNumber(self, block_number):
         global _blocks
         for block in _blocks:

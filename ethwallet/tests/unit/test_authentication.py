@@ -1,29 +1,69 @@
+import json
+
 __author__ = 'andrew.shvv@gmail.com'
 
 import hashlib
 import hmac
 import time
-from random import choice
-from string import printable
 
+from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
+
+from ethwallet.model.models import Address
+
+from ethwallet.tests.base import EthWalletUnitTest
+from core.utils.logging import getLogger
+
+logger = getLogger(__name__)
+
+
+class AuthenticationTest(EthWalletUnitTest):
+    def test_authentication(self):
+        User = get_user_model()
+        user = User(username="n87gvYb0u76G")
+        user.save()
+
+        self.client.logout()
+        self.client = HMACClient()
+        self.client.init_user(user)
+
+        first_address = self.create_address()
+        obj = Address.objects.get(pk=first_address['pk'])
+        self.assertEqual(obj.owner, user)
+
+        second_address = self.create_address()
+        obj = Address.objects.get(pk=second_address['pk'])
+        self.assertEqual(obj.owner, user)
+
+        self.send_eth(from_address=first_address['address'],
+                      to_address=second_address['address'],
+                      amount=1,
+                      debug=True)
 
 
 def add_auth_info(func):
     def decorator(self, *args, **kwargs):
-        check_data = "".join([choice(printable) for _ in range(50)])
-        signature = hmac.new(self.api_secret.encode(), check_data.encode(), hashlib.sha256).hexdigest()
+        data = kwargs.get('data')
+        if data:
+            message = json.dumps(data, separators=(',', ':'))
+        else:
+            message = ''
+
+        signature = hmac.new(self.api_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
         timestamp = str(int(time.time()))
 
         kwargs['ETHWALLET-VERSION'] = "1.0"
         kwargs['ETHWALLET-ACCESS-KEY'] = self.api_key
         kwargs['ETHWALLET-ACCESS-SIGN'] = signature
-        kwargs['ETHWALLET-ACCESS-CHECKDATA'] = check_data
         kwargs['ETHWALLET-ACCESS-TIMESTAMP'] = timestamp
 
-        request = func(self, *args, **kwargs)
+        logger.debug({
+            'data': message.encode(),
+            'api_secret': self.api_secret.encode(),
+            'signature': signature,
+        })
 
-        print(request)
+        request = func(self, *args, **kwargs)
         return request
 
     return decorator
