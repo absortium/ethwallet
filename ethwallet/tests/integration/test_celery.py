@@ -1,48 +1,65 @@
+import time
+
 __author__ = 'andrew.shvv@gmail.com'
 
 from django.conf import settings
+
 from core.utils.logging import getLogger
+from ethwallet.model.models import Address, Transaction
 from ethwallet.rpc.client import RPCClient
 from ethwallet.rpc.interfaces import HTTPInterface
 from ethwallet.tests.base import EthWalletLiveTest
+from ethwallet.celery import tasks
 
 logger = getLogger(__name__)
 
 
 class AccuracyTest(EthWalletLiveTest):
+    def setUp(self):
+        super().setUp()
+
+        # Create Address with coinbase address in order to have ability to send transaction from it.
+        self.rpcclient = RPCClient(HTTPInterface(host=settings.ETHNODE_URL))
+        self.coinbase = self.rpcclient.eth_coinbase()
+
+        # Be careful, do not change key argument because it is used for generating the address password,
+        # otherwise you will have to recreate the address with preallocated amount of ethereum.
+        address = Address(address=self.coinbase, owner_id=self.user.pk, key="somekey")
+        address.save()
+
     def test_send_transactions(self, *args, **kwargs):
         """
             In order to execute this test celery worker should use django test db, for that you should set
             the CELERY_TEST=True environment variable in the worker(celery) service. See docker-compose.yml
         """
+        tasks.check_block.delay()
 
-        # 1. Get main address (We can use data fixtures with already created user or just do it with rpc client).
-        client = RPCClient(HTTPInterface(host=settings.ETHNODE_URL))
-        addresses = client.eth_accounts()
-        self.assertEqual(len(addresses), 1)
-        coinbase = addresses[0]
+        coinbase_balance = self.rpcclient.eth_getBalance(address=self.coinbase)
 
-        # 2. Check balance (Do it over RPC client).
-        coinbase_balance = client.eth_getBalance(address=coinbase)
-
-        # 3. Create bunch of another addresses (This should be done over self.create_address()).
         addresses = []
-        count = 10
-        for _ in range(count):
-            address = self.create_address()
+
+        count_of_transaction = 5
+        amount = int(coinbase_balance / count_of_transaction)
+        for _ in range(count_of_transaction):
+            address = self.create_address()['address']
+            self.send_eth(amount=amount,
+                          from_address=self.coinbase,
+                          to_address=address,
+                          debug=True)
             addresses.append(address)
 
-            # 4. Send transactions to (Do it over RPC client).
-            client.eth_sendTransaction(from_address=coinbase,
-                                       to_address=address['address'],
-                                       value=coinbase_balance / count)
+        times = 5
+        for _ in range(times):
+            tasks.check_block.delay()
+            time.sleep(10)
 
-        self.wait_celery()
-
-        # 5. Check address's balances
         for address in addresses:
-            balance = client.eth_getBalance(address=address)
-            self.assertEqual(balance, coinbase_balance / count)
+            balance = self.rpcclient.eth_getBalance(address=address, block='pending')
+            self.assertEqual(balance, amount)
 
-        # 6. Check count of notification should be equal count of transactions.
-        self.assertEqual(count)
+        transactions = Transaction.objects.all()
+        self.assertEqual(len(transactions), count_of_transaction)
+
+        for transaction in transactions:
+            self.assertEqual(transaction.value, amount)
+            self.assertEqual(transaction.notified, True)

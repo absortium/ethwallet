@@ -11,8 +11,8 @@ from ethwallet import constants
 from ethwallet.celery.base import get_base_class
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.model.models import Transaction, Address, Block
+from ethwallet.notifications import NotificationClient
 from ethwallet.rpc.client import get_rpc_client
-from ethwallet.rpc.interfaces import HTTPInterface
 
 logger = getPrettyLogger(__name__)
 
@@ -20,65 +20,76 @@ logger = getPrettyLogger(__name__)
 @shared_task(bind=True, base=get_base_class())
 def check_block(self):
     with transaction.atomic():
-        client = get_rpc_client(interface=HTTPInterface(host=settings.ETHNODE_URL))
-
         def add_new_block(nodeblock, n):
-            for transaction in nodeblock['transactions']:
-                try:
-                    address = Address.objects.get(address=transaction['to'])
-                except Address.DoesNotExist:
-                    continue
+            with NotificationClient() as nc:
+                for transaction in nodeblock['transactions']:
+                    try:
+                        address = Address.objects.get(address=transaction['to'])
+                    except Address.DoesNotExist:
+                        continue
 
-                try:
-                    t = address.transactions.get(hash=transaction['hash'])
-                    t.block_number = int(transaction['blockNumber'], 16)
+                    try:
+                        t = address.transactions.get(hash=transaction['hash'])
+                        t.block_number = int(transaction['blockNumber'], 16)
 
-                except Transaction.DoesNotExist:
-                    t = Transaction(hash=transaction['hash'],
-                                    from_address=transaction['from'],
-                                    to_address=transaction['to'],
-                                    block_number=int(transaction['blockNumber'], 16),
-                                    owner_id=address.pk,
-                                    value=int(transaction['value'], 16))
-                t.save()
+                    except Transaction.DoesNotExist:
+                        t = Transaction(hash=transaction['hash'],
+                                        from_address=transaction['from'],
+                                        to_address=transaction['to'],
+                                        block_number=int(transaction['blockNumber'], 16),
+                                        owner_id=address.pk,
+                                        value=int(transaction['value'], 16))
+                    t.save()
 
-            for transaction in Transaction.objects.all():
-                confirmations = int(nodeblock['number'], 16) - transaction.block_number + 1
+                for transaction in Transaction.objects.all():
+                    confirmations = int(nodeblock['number'], 16) - transaction.block_number + 1
 
-                if not transaction.notified and confirmations >= CONFIRMATIONS_FOR_NOTIFICATION:
-                    transaction.notified = True
-                    address = Address.objects.get(address=transaction.to_address)
-                    notify_user.delay(webhook=address.owner.webhook,
-                                      address=address.address,
-                                      tx_hash=transaction.hash,
-                                      value=transaction.value)
+                    if not transaction.notified and confirmations >= CONFIRMATIONS_FOR_NOTIFICATION:
+                        transaction.notified = True
+                        address = Address.objects.get(address=transaction.to_address)
+                        nc.notify(webhook=address.owner.webhook,
+                                  address=address.address,
+                                  tx_hash=transaction.hash,
+                                  value=transaction.value)
 
-                transaction.save()
+                    transaction.save()
 
-            dbblock = Block(number=int(nodeblock['number'], 16), hash=nodeblock['hash'])
-            dbblock.save()
-            n += 1
-            return n
+                dbblock = Block(number=int(nodeblock['number'], 16), hash=nodeblock['hash'])
+                dbblock.save()
+                n += 1
+                return n
 
         def check_block(realblock, n):
             dbblock = Block.objects.get(number=n)
 
             if realblock['hash'] == dbblock.hash:
+                logger.debug('Block #{} - hashes are equal'.format(n))
                 n += 1
 
             else:
+                logger.debug('Block #{} - hashes are not equal'.format(n))
                 dbblock.delete()
                 n -= 1
 
             return n
 
-        n = Block.objects.latest('number').number
-        nodeblock = client.eth_getBlockByNumber(n)
+        logger.debug('Get RPC Client')
+        client = get_rpc_client(host=settings.ETHNODE_URL)
 
+        try:
+            n = Block.objects.latest('number').number
+        except Block.DoesNotExist:
+            n = client.eth_blockNumber()
+        logger.debug('Get last unprocessed block: {}'.format(n))
+
+        nodeblock = client.eth_getBlockByNumber(n)
         while nodeblock is not None:
             try:
+                logger.debug('Block #{} - check block'.format(n))
                 n = check_block(nodeblock, n)
             except Block.DoesNotExist:
+                logger.debug('Block #{} - does not exist'.format(n))
+                logger.debug('Block #{} - add new block'.format(n))
                 n = add_new_block(nodeblock, n)
 
             nodeblock = client.eth_getBlockByNumber(n)

@@ -1,6 +1,3 @@
-import hashlib
-import hmac
-
 __author__ = 'andrew.shvv@gmail.com'
 
 import time
@@ -12,54 +9,11 @@ from rest_framework.test import APITestCase, APIClient, APITransactionTestCase
 
 from core.utils.logging import getLogger
 from ethwallet import celery_app
-from ethwallet.tests.mixins.address import CreateAddressMixin
-from ethwallet.tests.mixins.rpcclient import RPCClientMockMixin
+from ethwallet.tests.mixins.address import AddressMixin
 from ethwallet.tests.mixins.notification import NotificationMockMixin
+from ethwallet.tests.mixins.rpcclient import RPCClientMockMixin
 
 logger = getLogger(__name__)
-
-
-def add_auth_info(func):
-    def decorator(self, *args, **kwargs):
-        message = kwargs.get('data')
-        signature = hmac.new(self.api_secret.encode(), message, hashlib.sha256).hexdigest()
-        timestamp = str(int(time.time()))
-
-        kwargs['ETHWALLET-VERSION'] = "1.0"
-        kwargs['ETHWALLET-ACCESS-KEY'] = self.api_key
-        kwargs['ETHWALLET-ACCESS-SIGN'] = signature
-        kwargs['ETHWALLET-ACCESS-TIMESTAMP'] = timestamp
-
-        return func(self, *args, **kwargs)
-
-    return decorator
-
-
-class HMACClient(APIClient):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.api_secret = None
-        self.api_key = None
-
-    def init_user(self, user):
-        self.api_secret = user.api_secret
-        self.api_key = user.api_key
-
-    @add_auth_info
-    def post(self, *args, **kwargs):
-        return super().post(*args, **kwargs)
-
-    @add_auth_info
-    def put(self, *args, **kwargs):
-        return super().put(*args, **kwargs)
-
-    @add_auth_info
-    def delete(self, *args, **kwargs):
-        return super().delete(*args, **kwargs)
-
-    @add_auth_info
-    def get(self, *args, **kwargs):
-        return super().get(*args, **kwargs)
 
 
 class EthWalletTestMixin():
@@ -75,6 +29,7 @@ class EthWalletTestMixin():
 
 
 class EthWalletLiveTest(APITransactionTestCase,
+                        AddressMixin,
                         EthWalletTestMixin):
     def setUp(self):
         super().setUp()
@@ -84,8 +39,8 @@ class EthWalletLiveTest(APITransactionTestCase,
         user.save()
 
         self.user = user
-        self.client = HMACClient()
-        self.client.init_user(self.user)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
 
     def wait_celery(self, tag=None):
         # WARNING: Sometime may skip the execution and I don't know why
@@ -119,7 +74,7 @@ class EthWalletLiveTest(APITransactionTestCase,
                    CELERY_ALWAYS_EAGER=True)
 class EthWalletUnitTest(APITestCase,
                         EthWalletTestMixin,
-                        CreateAddressMixin,
+                        AddressMixin,
                         RPCClientMockMixin,
                         NotificationMockMixin):
     def setUp(self):
@@ -131,8 +86,8 @@ class EthWalletUnitTest(APITestCase,
         user.save()
 
         self.user = user
-        self.client = HMACClient()
-        self.client.init_user(self.user)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
 
     def tearDown(self):
         self.unmock_rpcclient()

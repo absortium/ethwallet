@@ -2,21 +2,28 @@ import warnings
 
 from .constants import BLOCK_TAGS, BLOCK_TAG_LATEST
 from .exceptions import (BadRequest, BadResponse)
-from .interfaces import HTTPInterface
+from .interfaces import HTTPInterface, IPCInterface
 from .utils import hex_to_dec, validate_block
 
 _client = None
 
+from core.utils.logging import getPrettyLogger
 
-def get_rpc_client(*args, **kwargs):
+logger = getPrettyLogger(__name__)
+
+
+def get_rpc_client(interface="tcp", *args, **kwargs):
     global _client
     if not _client:
-        _client = RPCClient(*args, **kwargs)
+        if interface == "tcp":
+            _client = RPCClient(interface=HTTPInterface(*args, **kwargs))
+        elif interface == "ipc":
+            _client = RPCClient(interface=IPCInterface(*args, **kwargs))
     return _client
 
 
 class RPCClient():
-    def __init__(self, interface=HTTPInterface()):
+    def __init__(self, interface):
         self.interface = interface
 
     def construct(self, method, params=None, _id=0):
@@ -44,7 +51,10 @@ class RPCClient():
                 raise BadResponse("Bad json rpc version")
 
         try:
-            print("Req:{} Resp:{}".format(data, response))
+            logger.debug({
+                "Request:": data,
+                "Response:": response
+            })
             return response['result']
         except KeyError:
             raise BadResponse("There is no 'result' section in: {} (Only 30 characters shown)".format(response[:30]))

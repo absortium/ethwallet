@@ -11,5 +11,5 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "absortium.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "ethwallet.settings")
 application = get_wsgi_application()

@@ -10,8 +10,6 @@ from ethwallet.tests.base import EthWalletUnitTest
 logger = getLogger(__name__)
 
 
-
-git remote add origin git@github.com:absortium/ethwallet.git
 class AddressTest(EthWalletUnitTest):
     def test_creation_mixin(self):
         address = self.create_address()

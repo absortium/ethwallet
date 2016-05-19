@@ -11,7 +11,7 @@ _notifications = None
 
 class NotificationMockMixin():
     """
-        EthnodeMockMixin substitute original rpc client and return mock block information.
+        NotificationMockMixin substitute original 'notify_user' celery task.
     """
 
     def __init__(self):
@@ -26,7 +26,8 @@ class NotificationMockMixin():
         global _notifications
         _notifications = {}
 
-        self._notify_patcher = patch('ethwallet.celery.tasks.notify_user', new=Mock(delay=mock_notify_user))
+        self._notify_patcher = patch('ethwallet.notifications.NotificationClient.notify',
+                                     new=Mock(delay=mock_notify_user))
         self._notify_patcher.start()
 
     def unmock_notification(self):
@@ -35,4 +36,5 @@ class NotificationMockMixin():
 
 def mock_notify_user(webhook, address, tx_hash, value):
     global _notifications
+
     _notifications.setdefault(webhook, {}).setdefault(address, []).append((tx_hash, value))

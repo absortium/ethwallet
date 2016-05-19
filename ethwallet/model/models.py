@@ -1,20 +1,13 @@
 __author__ = 'andrew.shvv@gmail.com'
 
-import hashlib
-import os
-
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from core.utils.logging import getPrettyLogger
-from ethwallet import constants
+from ethwallet.utils import generate_token
 
 logger = getPrettyLogger(__name__)
-
-
-def generate_token():
-    return hashlib.sha1(os.urandom(128)).hexdigest()
 
 
 class ClientUser(AbstractUser):
@@ -24,14 +17,11 @@ class ClientUser(AbstractUser):
 
 
 class Address(models.Model):
-    """
-        Comment me!
-    """
-
     address = models.CharField(max_length=50)
 
     created = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="addresses")
+    key = models.TextField()
 
     class Meta():
         unique_together = ('address',)
@@ -45,9 +35,7 @@ class Address(models.Model):
 class Transaction(models.Model):
     from_address = models.CharField(max_length=50)
     to_address = models.CharField(max_length=50)
-    value = models.DecimalField(max_digits=constants.ACCOUNT_MAX_DIGITS,
-                                decimal_places=constants.DECIMAL_PLACES,
-                                default=0)
+    value = models.DecimalField(max_digits=30, decimal_places=1)
     block_number = models.IntegerField()
     owner = models.ForeignKey(Address, related_name="transactions")
     notified = models.BooleanField(default=False)

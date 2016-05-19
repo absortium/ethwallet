@@ -1,8 +1,9 @@
+from random import choice
+from string import ascii_letters
+
 from mock import patch
 
 from core.utils.logging import getLogger
-from string import ascii_letters
-from random import choice
 
 __author__ = 'andrew.shvv@gmail.com'
 

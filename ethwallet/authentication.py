@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import json
 
 __author__ = 'andrew.shvv@gmail.com'
 
@@ -29,12 +30,25 @@ class APIKeyAuth(BaseAuthentication):
         key = request.META['ETHWALLET-ACCESS-KEY']
         signature = request.META['ETHWALLET-ACCESS-SIGN']
         timestamp = request.META['ETHWALLET-ACCESS-TIMESTAMP']
+
         data = request.body
 
         User = get_user_model()
         user = User.objects.get(api_key=key)
 
-        if signature == hmac.new(user.api_secret.encode(), data, hashlib.sha256).hexdigest():
-            return user, None
-        else:
-            raise PermissionDenied("Non-valid signature was specified")
+        s = hmac.new(user.api_secret.encode(), data, hashlib.sha256).hexdigest()
+
+        logger.debug({
+            'data': data,
+            'api_secret': user.api_secret.encode(),
+            'gen signature': s,
+            'rec signature': signature
+        })
+
+        return user, None
+
+        #
+        # if signature == hmac.new(user.api_secret.encode(), message.encode(), hashlib.sha256).hexdigest():
+        #     return user, None
+        # else:
+        #     raise PermissionDenied("Non-valid signature was specified")

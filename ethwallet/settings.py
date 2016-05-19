@@ -18,6 +18,7 @@ docker_environments = {
     'SECRET_KEY': 'DJANGO_SECRET_KEY',
     'WHOAMI': 'WHOAMI',
     'POSTGRES_PASSWORD': 'POSTGRES_PASSWORD',
+    'CELERY_TEST': 'CELERY_TEST',
 }
 
 settings_module = sys.modules[__name__]
@@ -25,13 +26,12 @@ for name, env_name in docker_environments.items():
     value = os.environ[env_name] if env_name in os.environ else None
     setattr(settings_module, name, value)
 
-CELERY_TEST = False
 CELERY_BROKER = 'amqp://guest@docker.celery.broker//'
 CELERY_RESULT_BACKEND = 'redis://docker.celery.backend'
 
 CELERYBEAT_SCHEDULE = {
     'check_block-every-10-seconds': {
-        'task': 'tasks.check_block',
+        'task': 'ethwallet.celery.tasks.check_block',
         'schedule': timedelta(seconds=10)
     },
 }
@@ -78,10 +78,12 @@ REST_FRAMEWORK = {
 ROOT_URLCONF = 'ethwallet.urls'
 WSGI_APPLICATION = 'wsgi.application'
 
+CELERY_TEST = getattr(settings_module, 'CELERY_TEST') == "True"
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'ethwallet',
+        'NAME': 'ethwallet' if not CELERY_TEST else 'test_ethwallet',
         'USER': 'postgres',
         'PASSWORD': getattr(settings_module, 'POSTGRES_PASSWORD'),
         'HOST': 'docker.postgres',

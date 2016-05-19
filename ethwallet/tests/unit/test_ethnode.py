@@ -27,7 +27,7 @@ class EthnodeTest(EthWalletUnitTest):
             block = {
                 "hash": hex(i),
                 "number": hex(i),
-                "parentHash": hex(i-1) if i > 0 else hex(0),
+                "parentHash": hex(i - 1) if i > 0 else hex(0),
                 "timestamp": "0x5735223a"
             }
 
