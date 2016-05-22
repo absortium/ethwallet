@@ -9,7 +9,7 @@ import time
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
-from ethwallet.model.models import Address
+from ethwallet.models import Address
 
 from ethwallet.tests.base import EthWalletUnitTest
 from core.utils.logging import getLogger

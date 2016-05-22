@@ -3,7 +3,7 @@ __author__ = 'andrew.shvv@gmail.com'
 from core.utils.logging import getLogger
 from ethwallet.celery.tasks import check_block
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
-from ethwallet.model.models import Block, Transaction
+from ethwallet.models import Block, Transaction
 from ethwallet.tests.base import EthWalletUnitTest
 
 logger = getLogger(__name__)

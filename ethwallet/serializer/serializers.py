@@ -2,7 +2,7 @@ __author__ = 'andrew.shvv@gmail.com'
 
 from rest_framework import serializers
 
-from ethwallet.model.models import Address
+from ethwallet.models import Address
 
 
 class DynamicFieldsModelSerializer(serializers.ModelSerializer):

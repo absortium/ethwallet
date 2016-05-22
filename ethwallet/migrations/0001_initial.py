@@ -9,7 +9,7 @@ import django.utils.timezone
 from django.conf import settings
 from django.db import migrations, models
 
-import ethwallet.model.models
+import ethwallet.models
 
 
 class Migration(migrations.Migration):
@@ -45,8 +45,8 @@ class Migration(migrations.Migration):
                                                   help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.',
                                                   verbose_name='active')),
                 ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
-                ('api_key', models.CharField(default=ethwallet.model.models.generate_token, max_length=40)),
-                ('api_secret', models.CharField(default=ethwallet.model.models.generate_token, max_length=40)),
+                ('api_key', models.CharField(default=ethwallet.models.generate_token, max_length=40)),
+                ('api_secret', models.CharField(default=ethwallet.models.generate_token, max_length=40)),
                 ('webhook', models.CharField(max_length=40)),
                 ('groups', models.ManyToManyField(blank=True,
                                                   help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',

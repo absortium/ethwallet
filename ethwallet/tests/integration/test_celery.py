@@ -5,7 +5,7 @@ __author__ = 'andrew.shvv@gmail.com'
 from django.conf import settings
 
 from core.utils.logging import getLogger
-from ethwallet.model.models import Address, Transaction
+from ethwallet.models import Address, Transaction
 from ethwallet.rpc.client import RPCClient
 from ethwallet.rpc.interfaces import HTTPInterface
 from ethwallet.tests.base import EthWalletLiveTest

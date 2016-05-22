@@ -13,12 +13,14 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from datetime import timedelta
+from kombu import Queue, Exchange
 
 docker_environments = {
     'SECRET_KEY': 'DJANGO_SECRET_KEY',
     'WHOAMI': 'WHOAMI',
     'POSTGRES_PASSWORD': 'POSTGRES_PASSWORD',
     'CELERY_TEST': 'CELERY_TEST',
+    'AUTH': 'AUTH'
 }
 
 settings_module = sys.modules[__name__]
@@ -36,17 +38,17 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
-CELERY_TIMEZONE = 'UTC'
+AUTH = True if getattr(settings_module, 'AUTH') == "True" else False
 
 ROUTER_URL = "http://docker.router:8080/publish"
+ALLOWED_HOSTS = ['*']
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = []
 
 # Application definition
 
@@ -78,7 +80,11 @@ REST_FRAMEWORK = {
 ROOT_URLCONF = 'ethwallet.urls'
 WSGI_APPLICATION = 'wsgi.application'
 
-CELERY_TEST = getattr(settings_module, 'CELERY_TEST') == "True"
+CELERY_TEST = getattr(settings_module, 'CELERY_TEST') in ["True", "true"]
+CELERY_DEFAULT_QUEUE = 'ethwallet'
+CELERY_QUEUES = (
+    Queue('ethwallet', Exchange('ethwallet'), routing_key='ethwallet'),
+)
 
 DATABASES = {
     'default': {

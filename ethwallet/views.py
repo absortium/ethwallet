@@ -9,7 +9,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 
 from core.utils.logging import getPrettyLogger
-from ethwallet.model.models import Address
+from ethwallet.models import Address
 from ethwallet.serializer.serializers import AddressSerializer
 from ethwallet.utils import random_string
 

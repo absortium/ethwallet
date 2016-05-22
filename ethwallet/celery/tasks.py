@@ -10,7 +10,7 @@ from core.utils.logging import getPrettyLogger
 from ethwallet import constants
 from ethwallet.celery.base import get_base_class
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
-from ethwallet.model.models import Transaction, Address, Block
+from ethwallet.models import Transaction, Address, Block
 from ethwallet.notifications import NotificationClient
 from ethwallet.rpc.client import get_rpc_client
 

@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.status import HTTP_404_NOT_FOUND, HTTP_405_METHOD_NOT_ALLOWED
 
 from core.utils.logging import getLogger
-from ethwallet.model.models import Address
+from ethwallet.models import Address
 from ethwallet.tests.base import EthWalletUnitTest
 
 logger = getLogger(__name__)

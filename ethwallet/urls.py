@@ -9,5 +9,5 @@ router = routers.SimpleRouter()
 router.register(prefix=r"addresses", viewset=AddressViewSet, base_name='Address')
 
 urlpatterns = [
-    url(r'^', include(router.urls)),
+    url(r'^v1/', include(router.urls)),
 ]
