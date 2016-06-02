@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 import sys
 from datetime import timedelta
+
 from kombu import Queue, Exchange
 
 docker_environments = {
@@ -20,7 +21,8 @@ docker_environments = {
     'WHOAMI': 'WHOAMI',
     'POSTGRES_PASSWORD': 'POSTGRES_PASSWORD',
     'CELERY_TEST': 'CELERY_TEST',
-    'AUTH': 'AUTH'
+    'AUTH': 'AUTH',
+    'MODE': 'MODE'
 }
 
 settings_module = sys.modules[__name__]
@@ -43,7 +45,6 @@ AUTH = True if getattr(settings_module, 'AUTH') == "True" else False
 ROUTER_URL = "http://docker.router:8080/publish"
 ALLOWED_HOSTS = ['*']
 
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -60,6 +61,11 @@ INSTALLED_APPS = [
     'ethwallet',
     'ethwallet.celery',
 ]
+
+CELERY_DEFAULT_QUEUE = 'ethwallet'
+CELERY_QUEUES = (
+    Queue('ethwallet', Exchange('ethwallet'), routing_key='ethwallet'),
+)
 
 AUTH_USER_MODEL = "ethwallet.ClientUser"
 ETHNODE_URL = "docker.ethnode"
@@ -80,16 +86,14 @@ REST_FRAMEWORK = {
 ROOT_URLCONF = 'ethwallet.urls'
 WSGI_APPLICATION = 'wsgi.application'
 
-CELERY_TEST = getattr(settings_module, 'CELERY_TEST') in ["True", "true"]
-CELERY_DEFAULT_QUEUE = 'ethwallet'
-CELERY_QUEUES = (
-    Queue('ethwallet', Exchange('ethwallet'), routing_key='ethwallet'),
-)
+# Very dirty hack for forcing celery to connect to the test_postgres db while integration test.
+NEED_TEST_DB = getattr(settings_module, 'MODE') in ['integration']
+dbname = 'test_ethwallet' if NEED_TEST_DB else 'ethwallet'
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'ethwallet' if not CELERY_TEST else 'test_ethwallet',
+        'NAME': dbname,
         'USER': 'postgres',
         'PASSWORD': getattr(settings_module, 'POSTGRES_PASSWORD'),
         'HOST': 'docker.postgres',
