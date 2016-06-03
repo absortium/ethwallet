@@ -99,7 +99,7 @@ def check_block(self):
 def notify_user(self, webhook, address, tx_hash, value):
     data = {
         'address': address,
-        'value': value,
+        'amount': value,
         'tx_hash': tx_hash
     }
 
