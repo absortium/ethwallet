@@ -37,6 +37,7 @@ class APIKeyAuth(BaseAuthentication):
         User = get_user_model()
 
         logger.debug([key, recv_signature, timestamp])
+
         try:
             logger.debug([user.api_key for user in User.objects.all()])
             user = User.objects.get(api_key=key)

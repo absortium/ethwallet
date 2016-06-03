@@ -14,7 +14,7 @@ class AddressMixin():
             self.client.force_authenticate(user)
 
         # Create account
-        response = self.client.post('/addresses/', format='json')
+        response = self.client.post('/v1/addresses/', format='json')
         if debug:
             logger.debug(response.content)
 
@@ -35,7 +35,7 @@ class AddressMixin():
             "amount": amount
         }
 
-        url = '/addresses/{from_address}/send/'.format(from_address=from_address)
+        url = '/v1/addresses/{from_address}/send/'.format(from_address=from_address)
         response = self.client.post(url, format='json', data=data)
 
         if debug:

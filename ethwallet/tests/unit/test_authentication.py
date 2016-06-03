@@ -52,16 +52,10 @@ def add_auth_info(func):
         signature = hmac.new(self.api_secret.encode(), message.encode(), hashlib.sha256).hexdigest()
         timestamp = str(int(time.time()))
 
-        kwargs['ETHWALLET-VERSION'] = "1.0"
-        kwargs['ETHWALLET-ACCESS-KEY'] = self.api_key
-        kwargs['ETHWALLET-ACCESS-SIGN'] = signature
-        kwargs['ETHWALLET-ACCESS-TIMESTAMP'] = timestamp
-
-        logger.debug({
-            'data': message.encode(),
-            'api_secret': self.api_secret.encode(),
-            'signature': signature,
-        })
+        kwargs['HTTP_ETHWALLET_VERSION'] = "1.0"
+        kwargs['HTTP_ETHWALLET_ACCESS_KEY'] = self.api_key
+        kwargs['HTTP_ETHWALLET_ACCESS_SIGN'] = signature
+        kwargs['HTTP_ETHWALLET_ACCESS_TIMESTAMP'] = timestamp
 
         request = func(self, *args, **kwargs)
         return request

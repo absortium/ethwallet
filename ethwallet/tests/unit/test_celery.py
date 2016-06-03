@@ -14,7 +14,7 @@ class EthnodeTest(EthWalletUnitTest):
         super().setUp()
 
         # Create address
-        self.address = self.create_address()
+        self.address = self.create_address(debug=True)
         self.mock_notification()
 
     def tearDown(self):
