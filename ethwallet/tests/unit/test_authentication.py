@@ -37,8 +37,7 @@ class AuthenticationTest(EthWalletUnitTest):
 
         self.send_eth(from_address=first_address['address'],
                       to_address=second_address['address'],
-                      amount=1,
-                      debug=True)
+                      amount=1)
 
 
 def add_auth_info(func):
