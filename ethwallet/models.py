@@ -13,7 +13,7 @@ logger = getPrettyLogger(__name__)
 class ClientUser(AbstractUser):
     api_key = models.CharField(max_length=40, default=generate_token)
     api_secret = models.CharField(max_length=40, default=generate_token)
-    webhook = models.CharField(max_length=40)
+    webhook = models.CharField(max_length=110)
 
 
 class Address(models.Model):

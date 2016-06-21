@@ -51,10 +51,6 @@ class RPCClient():
                 raise BadResponse("Bad json rpc version")
 
         try:
-            logger.debug({
-                "Request:": data,
-                "Response:": response
-            })
             return response['result']
         except KeyError:
             raise BadResponse("There is no 'result' section in: {} (Only 30 characters shown)".format(response[:30]))

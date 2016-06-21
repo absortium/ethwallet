@@ -1,33 +1,54 @@
+from core.utils.logging import getPrettyLogger
+
 __author__ = 'andrew.shvv@gmail.com'
+logger = getPrettyLogger(__name__)
+
+_client = None
 
 
-class NotificationClient():
+def get_notify_client():
+    global _client
+    if _client is None:
+        _client = NotifyClient()
+    return _client
+
+
+def set_notify_client(client):
+    global _client
+    _client = client
+
+
+class NotifyClient():
+    def notify(self, *args, **kwargs):
+        from ethwallet.celery import tasks
+        tasks.notify_user.delay(*args, **kwargs)
+
+
+class atomic:
     """
-        This class is used for user notification about arriving transaction only if no exceptions was raised.
-        You can turn off this behaviour by setting atomic=False
+        This class is used for notifying user about arriving transaction if no exceptions was raised.
     """
 
-    def __init__(self, atomic=True):
-        # I know that is kind of tricky but otherwise NotificationMockMixin is not working.
-        from ethwallet.celery.tasks import notify_user
-        self.func = notify_user
-
-        self.atomic = atomic
-        self.notifications = []
+    client = None
+    notifications = None
 
     def __enter__(self):
+        self.notifications = []
+        self.client = get_notify_client()
+
+        set_notify_client(self)
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_val and self.atomic:
+        if not exc_val:
             for notification in self.notifications:
                 args = notification['args']
                 kwargs = notification['kwargs']
 
-                self.func.delay(*args, **kwargs)
+                self.client.notify(*args, **kwargs)
+
+        set_notify_client(self.client)
 
     def notify(self, *args, **kwargs):
-        if self.atomic:
-            self.notifications.append({'args': args, 'kwargs': kwargs})
-        else:
-            self.func.delay(*args, **kwargs)
+        self.notifications.append({'args': args, 'kwargs': kwargs})

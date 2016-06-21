@@ -14,11 +14,10 @@ class EthnodeTest(EthWalletUnitTest):
         super().setUp()
 
         # Create address
-        self.address = self.create_address(debug=True)
-        self.mock_notification()
+        self.address = self.create_address()
+        self.notification_flush()
 
     def tearDown(self):
-        self.unmock_notification()
         super().tearDown()
 
     def _init_node_data(self, start=0, end=1, need_transaction=True):
@@ -97,12 +96,9 @@ class EthnodeTest(EthWalletUnitTest):
         transactions = Transaction.objects.all()
         self.assertEqual(len(transactions), 5)
 
-    def test_not_enough_money(self):
-        pass
-
     def test_the_transaction_notification(self):
         """
-            Test case where transaction confirmation exceed number of confirmation is needed for its deletion.
+            Test case where transaction confirmation exceed number of confirmation is needed for its notification.
         """
 
         transaction_value = 1
@@ -117,15 +113,11 @@ class EthnodeTest(EthWalletUnitTest):
         # Simulate celery task execution
         check_block.delay()
 
-        notifications = self.get_notification()
+        notifications = self.get_notifications(self.user.webhook)
+        self.assertNotEqual(notifications, None)
 
-        for webhook, addresses in notifications.items():
-            for address, transactions in addresses.items():
-                hashes = [tx_hash for tx_hash, _ in transactions]
+        notifications = notifications[self.address["address"]]
+        self.assertEqual(len(notifications), count_of_notifications)
 
-                # should be notification with the same tx hash
-                self.assertEqual(len(hashes), len(set(hashes)))
-                self.assertEqual(len(hashes), count_of_notifications)
-
-                values = [value for _, value in transactions]
-                self.assertEqual(sum_value, sum(values))
+        values = [value for _, value in notifications]
+        self.assertEqual(sum_value, sum(values))

@@ -13,8 +13,6 @@ logger = getPrettyLogger(__name__)
 
 class APIKeyAuth(BaseAuthentication):
     def authenticate(self, request):
-        logger.debug(request)
-        logger.debug(request.META)
         if 'HTTP_ETHWALLET_ACCESS_KEY' not in request.META:
             return None
 
@@ -36,10 +34,7 @@ class APIKeyAuth(BaseAuthentication):
         # TODO: Create linked model that will store key,secret,user_id
         User = get_user_model()
 
-        logger.debug([key, recv_signature, timestamp])
-
         try:
-            logger.debug([user.api_key for user in User.objects.all()])
             user = User.objects.get(api_key=key)
         except User.DoesNotExist:
             return None, None

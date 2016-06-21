@@ -80,6 +80,7 @@ class EthWalletUnitTest(APITestCase,
     def setUp(self):
         super().setUp()
         self.mock_rpcclient()
+        self.mock_notification()
 
         User = get_user_model()
         user = User(username="primary", password="test", webhook="www.somewebhook.com")
@@ -91,4 +92,5 @@ class EthWalletUnitTest(APITestCase,
 
     def tearDown(self):
         self.unmock_rpcclient()
+        self.unmock_notification()
         super().tearDown()
