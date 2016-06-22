@@ -20,6 +20,9 @@ logger = getPrettyLogger(__name__)
 
 def add_new_transactions(transactions):
     for bt in transactions:
+        if bt['to'] is None:
+            continue
+
         try:
             # Check - do we have such transaction address in our db?
             address = Address.objects.get(address=bt['to'])
@@ -43,11 +46,11 @@ def add_new_transactions(transactions):
 
         except Transaction.DoesNotExist:
             st = Transaction(hash=t_hash,
-                            from_address=t_from_address,
-                            to_address=t_to_address,
-                            block_number=t_block_number,
-                            owner_id=address.pk,
-                            value=t_value)
+                             from_address=t_from_address,
+                             to_address=t_to_address,
+                             block_number=t_block_number,
+                             owner_id=address.pk,
+                             value=t_value)
             st.save()
 
 

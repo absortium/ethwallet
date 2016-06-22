@@ -5,6 +5,7 @@ from ethwallet.celery.tasks import check_block
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.models import Block, Transaction
 from ethwallet.tests.base import EthWalletUnitTest
+from ethwallet.tests.data.ethnode import blocks, address
 
 logger = getLogger(__name__)
 

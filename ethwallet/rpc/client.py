@@ -14,7 +14,7 @@ logger = getPrettyLogger(__name__)
 
 def get_rpc_client(interface="tcp", *args, **kwargs):
     global _client
-    if not _client:
+    if _client is None:
         if interface == "tcp":
             _client = RPCClient(interface=HTTPInterface(*args, **kwargs))
         elif interface == "ipc":
