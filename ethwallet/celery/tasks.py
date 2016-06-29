@@ -1,134 +1,166 @@
-__author__ = 'andrew.shvv@gmail.com'
-
 import requests
 from celery import shared_task
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import transaction
-from pprintpp import pprint as print
+from requests.exceptions import ConnectionError, ConnectTimeout
+from rest_framework.exceptions import ValidationError
 
 from core.utils.logging import getPrettyLogger
 from ethwallet import constants
 from ethwallet import notifications
+from ethwallet import sendethereum
 from ethwallet.celery.base import get_base_class
-from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.models import Transaction, Address, Block
 from ethwallet.notifications import get_notify_client
 from ethwallet.rpc.client import get_rpc_client
+from ethwallet.rpc.iterator import BlockChainIterator
+from ethwallet.sendethereum import get_send_client
+from ethwallet.serializer.serializers import TransactionSerializer
+from ethwallet.utils import get_wallet_password, eth2wei
+
+__author__ = 'andrew.shvv@gmail.com'
 
 logger = getPrettyLogger(__name__)
 
 
+def add_new_block(block):
+    add_new_transactions(block['transactions'])
+
+    block_number = int(block['number'], 16)
+    Block(number=block_number, hash=block['hash']).save()
+
+
 def add_new_transactions(transactions):
-    for bt in transactions:
-        if bt['to'] is None:
-            continue
+    def deserialize(t):
+        serializer = TransactionSerializer(data=t)
+        serializer.is_valid(raise_exception=ValidationError)
+        return serializer.object()
 
-        try:
-            # Check - do we have such transaction address in our db?
-            address = Address.objects.get(address=bt['to'])
-        except Address.DoesNotExist:
-            logger.debug(["Continue:", bt['to']])
-            continue
+    def send_to_base(t):
+        # If we receive new transaction from some external ethereum address than we should redirect ethereum
+        # on base user account.
 
-        logger.debug(["Check:", bt['to']])
+        sc = get_send_client()
 
-        t_hash = bt['hash']
-        t_from_address = bt['from']
-        t_to_address = bt['to']
-        t_block_number = int(bt['blockNumber'], 16)
-        t_value = int(bt['value'], 16)
+        base_user_address = Address.objects.get(owner=t.owner, is_base_address=True)
 
-        try:
-            # This case means that we already proceed the transaction, which
-            # may happens while blockchain fork, so we should change the block number
-            st = address.transactions.get(hash=bt['hash'])
-            st.block_number = int(bt['blockNumber'], 16)
+        sc.send(from_address=t.to_address,
+                to_address=base_user_address.address,
+                value=t.value,
+                user_pk=t.owner.pk)
 
-        except Transaction.DoesNotExist:
-            st = Transaction(hash=t_hash,
-                             from_address=t_from_address,
-                             to_address=t_to_address,
-                             block_number=t_block_number,
-                             owner_id=address.pk,
-                             value=t_value)
-            st.save()
+    def send_notifications(t):
+        # If transaction is received on the base address this means that it is our transaction that we
+        # redirected previously, so we should notify user that he can use money now.
 
+        nc = get_notify_client()
+        if t.notification_status == constants.NOTIFICATION_INIT:
+            t.notification_status = constants.NOTIFICATION_PENDING
 
-def send_notifications(transactions, block_number):
-    nc = get_notify_client()
-
-    for t in transactions:
-        confirmations = block_number - t.block_number + 1
-        if not t.notified and confirmations >= CONFIRMATIONS_FOR_NOTIFICATION:
-            t.notified = True
-            address = Address.objects.get(address=t.to_address)
-
-            nc.notify(webhook=address.owner.webhook,
-                      address=address.address,
+            nc.notify(web_hook=t.owner.web_hook,
+                      address=t.from_address,
                       tx_hash=t.hash,
                       value=t.value)
 
-        t.save()
+    for t in transactions:
+        try:
+            t = deserialize(t)
+        except ValidationError:
+            continue
+
+        try:
+            address = Address.objects.get(address=t.to_address)
+        except Address.DoesNotExist:
+            continue
+
+        try:
+            # This case means that we already proceed the transaction, which
+            # may happens in blockchain fork situation, so if we encounter this situation
+            # we should change transaction block number, to which it belongs now.
+
+            st = Transaction.objects.filter(hash=t.hash)
+            st.block_number = t.block_number
+
+        except Transaction.DoesNotExist:
+            st = t
+            st.owner = address.owner
+
+        if address.is_base_address:
+            send_notifications(st)
+
+        elif not st.is_spent:
+            send_to_base(st)
+
+        st.save()
 
 
 @shared_task(bind=True, base=get_base_class())
 def check_block(self):
-    with notifications.atomic():
-        with transaction.atomic():
-            def add_new_block(nodeblock, n):
-                block_number = int(nodeblock['number'], 16)
+    block_chain = BlockChainIterator()
 
-                add_new_transactions(nodeblock['transactions'])
-                send_notifications(Transaction.objects.all(), block_number)
+    for block in block_chain:
 
-                dbblock = Block(number=block_number, hash=nodeblock['hash'])
-                dbblock.save()
-                n += 1
-                return n
+        with notifications.atomic():
+            with sendethereum.atomic():
+                with transaction.atomic():
+                    try:
+                        dbblock = Block.objects.get(number=int(block['number'], 16))
 
-            def check_block(realblock, n):
-                dbblock = Block.objects.get(number=n)
+                        if block['hash'] == dbblock.hash:
+                            block_chain.forward()
+                        else:
+                            # In case of block chain fork we should delete block with wrong hash
+                            # and rollback to the previous one.
 
-                if realblock['hash'] == dbblock.hash:
-                    n += 1
+                            dbblock.delete()
+                            block_chain.back()
 
-                else:
-                    dbblock.delete()
-                    n -= 1
-
-                return n
-
-            # logger.debug('Get RPC Client')
-            client = get_rpc_client(host=settings.ETHNODE_URL)
-
-            try:
-                n = Block.objects.latest('number').number
-            except Block.DoesNotExist:
-                n = client.eth_blockNumber()
-            # logger.debug('Get last unprocessed block: {}'.format(n))
-
-            nodeblock = client.eth_getBlockByNumber(n)
-            while nodeblock is not None:
-                try:
-                    # logger.debug('Block #{} - check block'.format(n))
-                    n = check_block(nodeblock, n)
-                except Block.DoesNotExist:
-                    n = add_new_block(nodeblock, n)
-
-                nodeblock = client.eth_getBlockByNumber(n)
+                    except Block.DoesNotExist:
+                        add_new_block(block)
+                        block_chain.forward()
 
 
-@shared_task(bind=True, max_retries=constants.CELERY_MAX_RETRIES, base=get_base_class())
-def notify_user(self, webhook, address, tx_hash, value):
+@shared_task(bind=True, max_retries=constants.SEND_MAX_RETRIES, base=get_base_class())
+def send(self, user_pk, from_address, to_address, value):
+    try:
+        value = eth2wei(value)
+
+        User = get_user_model()
+        user = User.objects.get(pk=user_pk)
+
+        password = get_wallet_password(user.wallet_secret_key)
+
+        client = get_rpc_client(host=settings.ETHNODE_URL)
+        client.personal_unlockAccount(address=from_address, passphrase=password)
+
+        balance = client.eth_getBalance()
+
+        if balance >= value:
+            client.eth_sendTransaction(from_address=from_address,
+                                       to_address=to_address,
+                                       value=value)
+        else:
+            raise ValidationError("Not enough money")
+
+    except (ConnectionError, ConnectTimeout) as e:
+        raise self.retry(countdown=constants.SEND_RETRY_COUNTDOWN)
+
+
+@shared_task(bind=True, max_retries=constants.NOTIFY_MAX_RETRIES, base=get_base_class())
+def notify_user(self, tx_pk):
+    t = Transaction.objects.get(pk=tx_pk)
+
     data = {
-        'address': address,
-        'amount': value,
-        'tx_hash': tx_hash
+        'address': t.to_address,
+        'amount': t.value,
+        'tx_hash': t.hash
     }
 
     try:
-        logger.debug("Notify", data, webhook)
-        requests.post(webhook, address, data=data)
-    except Exception as e:
-        print(e)
+        requests.post(t.owner.web_hook, data=data)
+        t.notification_status = constants.NOTIFICATION_DONE
+        t.save()
+
+    except (ConnectionError, ConnectTimeout) as e:
         raise self.retry(countdown=constants.NOTIFY_RETRY_COUNTDOWN)

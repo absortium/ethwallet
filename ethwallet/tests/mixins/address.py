@@ -1,6 +1,6 @@
 __author__ = 'andrew.shvv@gmail.com'
 
-from rest_framework.status import HTTP_201_CREATED
+from rest_framework import status
 
 from core.utils.logging import getLogger
 
@@ -19,11 +19,11 @@ class AddressMixin():
             logger.debug(response.content)
 
         if with_checks:
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         return response.json()
 
-    def send_eth(self, amount, from_address, to_address, user=None, debug=False, with_checks=True):
+    def send_eth(self, amount, to_address, user=None, debug=False, with_checks=True):
         self.assertEqual(type(amount), int)
 
         if user:
@@ -35,13 +35,12 @@ class AddressMixin():
             "amount": amount
         }
 
-        url = '/v1/addresses/{from_address}/send/'.format(from_address=from_address)
-        response = self.client.post(url, format='json', data=data)
+        response = self.client.post('/v1/send/', format='json', data=data)
 
         if debug:
             logger.debug(response.content)
 
         if with_checks:
-            self.assertEqual(response.status_code, HTTP_201_CREATED)
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         return response.json()

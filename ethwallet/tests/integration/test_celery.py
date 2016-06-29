@@ -42,9 +42,8 @@ class AccuracyTest(EthWalletLiveTest):
         amount = int(coinbase_balance / count_of_transaction)
         for _ in range(count_of_transaction):
             address = self.create_address()['address']
-            self.send_eth(amount=amount,
-                          from_address=self.coinbase,
-                          to_address=address,
+            self.send_eth(to_address=address,
+                          amount=amount,
                           debug=True)
             addresses.append(address)
 

@@ -21,7 +21,6 @@ docker_environments = {
     'WHOAMI': 'WHOAMI',
     'POSTGRES_PASSWORD': 'POSTGRES_PASSWORD',
     'CELERY_TEST': 'CELERY_TEST',
-    'AUTH': 'AUTH',
     'MODE': 'MODE'
 }
 
@@ -40,16 +39,17 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
-AUTH = True if getattr(settings_module, 'AUTH') == "True" else False
+MODE = getattr(settings_module, 'MODE')
 
 ROUTER_URL = "http://docker.router:8080/publish"
-ALLOWED_HOSTS = ['*']
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = MODE not in ["testnet", "realnet"]
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -87,7 +87,7 @@ ROOT_URLCONF = 'ethwallet.urls'
 WSGI_APPLICATION = 'wsgi.application'
 
 # Very dirty hack for forcing celery to connect to the test_postgres db while integration test.
-NEED_TEST_DB = getattr(settings_module, 'MODE') in ['integration']
+NEED_TEST_DB = MODE in ['integration']
 dbname = 'test_ethwallet' if NEED_TEST_DB else 'ethwallet'
 
 DATABASES = {

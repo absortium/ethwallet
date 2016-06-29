@@ -5,7 +5,6 @@ from ethwallet.celery.tasks import check_block
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.models import Block, Transaction
 from ethwallet.tests.base import EthWalletUnitTest
-from ethwallet.tests.data.ethnode import blocks, address
 
 logger = getLogger(__name__)
 
@@ -15,7 +14,7 @@ class EthnodeTest(EthWalletUnitTest):
         super().setUp()
 
         # Create address
-        self.address = self.create_address()
+        self.address = self.create_address(debug=True)
         self.notification_flush()
 
     def tearDown(self):
@@ -23,6 +22,7 @@ class EthnodeTest(EthWalletUnitTest):
 
     def _init_node_data(self, start=0, end=1, need_transaction=True):
         blocks = []
+
         for i in range(start, end):
             block = {
                 "hash": hex(i),
@@ -67,7 +67,7 @@ class EthnodeTest(EthWalletUnitTest):
                                 to_address=self.address["address"],
                                 value=0x01,
                                 hash=hex(i),
-                                owner_id=self.address['pk'],
+                                owner_id=self.user.pk,
                                 block_number=i)
                 t.save()
 
@@ -84,7 +84,7 @@ class EthnodeTest(EthWalletUnitTest):
     def test_the_different_hash(self):
         """
             Test case with the same last hashes but not full history of blocks. We should roll back for a couple of blocks
-            and then hang up.
+            and then catch up.
         """
 
         self._init_node_data(end=5)
@@ -114,7 +114,7 @@ class EthnodeTest(EthWalletUnitTest):
         # Simulate celery task execution
         check_block.delay()
 
-        notifications = self.get_notifications(self.user.webhook)
+        notifications = self.get_notifications(self.user.web_hook)
         self.assertNotEqual(notifications, None)
 
         notifications = notifications[self.address["address"]]

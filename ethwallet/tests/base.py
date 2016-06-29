@@ -35,7 +35,7 @@ class EthWalletLiveTest(APITransactionTestCase,
         super().setUp()
 
         User = get_user_model()
-        user = User(username="primary", password="test", webhook="www.somewebhook.com")
+        user = User(username="primary", password="test", web_hook="www.somewebhook.com")
         user.save()
 
         self.user = user
@@ -83,7 +83,7 @@ class EthWalletUnitTest(APITestCase,
         self.mock_notification()
 
         User = get_user_model()
-        user = User(username="primary", password="test", webhook="www.somewebhook.com")
+        user = User(username="primary", password="test", web_hook="www.somewebhook.com")
         user.save()
 
         self.user = user

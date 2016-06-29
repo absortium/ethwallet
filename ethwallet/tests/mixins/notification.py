@@ -43,6 +43,6 @@ class NotificationMockMixin():
 
 
 class MockClient():
-    def notify(self, webhook, address, tx_hash, value):
+    def notify(self, web_hook, address, tx_hash, value):
         global _notifications
-        _notifications.setdefault(webhook, {}).setdefault(address, []).append((tx_hash, value))
+        _notifications.setdefault(web_hook, {}).setdefault(address, []).append((tx_hash, value))

@@ -214,18 +214,18 @@ class Client(object):
 
 from django.conf import settings
 
-_client = None
+_notify_client = None
 
 
 def get_crossbar_client(*args, **kwargs):
     url = settings.ROUTER_URL
 
-    global _client
+    global _notify_client
     if _client is None:
         _client = Client(url, *args, **kwargs)
     return _client
 
 
 def set_crossbar_client(client):
-    global _client
+    global _notify_client
     _client = client

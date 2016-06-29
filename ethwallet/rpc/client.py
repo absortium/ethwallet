@@ -5,7 +5,7 @@ from .exceptions import (BadRequest, BadResponse)
 from .interfaces import HTTPInterface, IPCInterface
 from .utils import hex_to_dec, validate_block
 
-_client = None
+_notify_client = None
 
 from core.utils.logging import getPrettyLogger
 
@@ -13,7 +13,7 @@ logger = getPrettyLogger(__name__)
 
 
 def get_rpc_client(interface="tcp", *args, **kwargs):
-    global _client
+    global _notify_client
     if _client is None:
         if interface == "tcp":
             _client = RPCClient(interface=HTTPInterface(*args, **kwargs))

@@ -9,6 +9,8 @@ class EthWalletConfig(AppConfig):
 
     def ready(self):
         super(EthWalletConfig, self).ready()
+
+        from ethwallet import signals
         from django.conf import settings
 
         if settings.CELERY_TEST:

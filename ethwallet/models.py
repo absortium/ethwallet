@@ -1,30 +1,36 @@
-__author__ = 'andrew.shvv@gmail.com'
-
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
+from core.serializer.fields import MyChoiceField
 from core.utils.logging import getPrettyLogger
+from ethwallet import constants
 from ethwallet.utils import generate_token
 
 logger = getPrettyLogger(__name__)
 
+__author__ = 'andrew.shvv@gmail.com'
+
 
 class ClientUser(AbstractUser):
-    api_key = models.CharField(max_length=40, default=generate_token)
-    api_secret = models.CharField(max_length=40, default=generate_token)
-    webhook = models.CharField(max_length=110)
+    api_key = models.CharField(max_length=constants.API_KEY_LEN, default=generate_token)
+    api_secret = models.CharField(max_length=constants.API_SECRETS_LEN, default=generate_token)
+
+    web_hook = models.TextField()
+    amount = models.DecimalField(max_digits=constants.MAX_DIGITS,
+                                 decimal_places=constants.DECIMAL_PLACES,
+                                 default=0)
+
+    wallet_secret_key = models.TextField()
 
 
 class Address(models.Model):
-    address = models.CharField(max_length=50)
+    address = models.CharField(max_length=constants.ADDRESS_LEN, primary_key=True, null=True)
 
     created = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="addresses")
-    key = models.TextField()
 
-    class Meta():
-        unique_together = ('address',)
+    is_base_address = models.BooleanField(default=False)
 
     def update(self, **kwargs):
         # update() is converted directly to an SQL statement; it doesn't exec save() on the model
@@ -33,22 +39,30 @@ class Address(models.Model):
 
 
 class Transaction(models.Model):
-    from_address = models.CharField(max_length=50)
-    to_address = models.CharField(max_length=50)
-    value = models.DecimalField(max_digits=30, decimal_places=1)
-    block_number = models.IntegerField()
-    owner = models.ForeignKey(Address, related_name="transactions")
-    notified = models.BooleanField(default=False)
-    hash = models.CharField(max_length=100)
+    hash = models.CharField(max_length=constants.HASH_LEN, primary_key=True)
 
-    class Meta():
-        unique_together = ('hash',)
+    from_address = models.CharField(max_length=constants.ADDRESS_LEN)
+    to_address = models.CharField(max_length=constants.ADDRESS_LEN)
+
+    value = models.DecimalField(max_digits=constants.MAX_DIGITS,
+                                decimal_places=constants.DECIMAL_PLACES)
+    spent = models.DecimalField(max_digits=constants.MAX_DIGITS,
+                                decimal_places=constants.DECIMAL_PLACES,
+                                default=0)
+    block_number = models.IntegerField()
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="transactions")
+
+    notification_status = models.IntegerField()
+    redirected = models.BooleanField(default=False)
+
+    @property
+    def is_spent(self):
+        return self.spent >= self.value
 
 
 class Block(models.Model):
+    hash = models.CharField(max_length=constants.HASH_LEN, primary_key=True)
+
     number = models.IntegerField()
     created = models.DateTimeField(auto_now_add=True)
-    hash = models.CharField(max_length=100)
-
-    class Meta():
-        unique_together = ('hash',)
