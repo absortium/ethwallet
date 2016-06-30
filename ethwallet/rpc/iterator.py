@@ -36,9 +36,7 @@ class BlockChainIterator():
         return block
 
     def forward(self):
-        logger.debug("Forward {}".format(self.number))
         self.number += 1
 
     def back(self):
-        logger.debug("Back {}".format(self.number))
         self.number -= 1

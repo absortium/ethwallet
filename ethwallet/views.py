@@ -17,12 +17,12 @@ from ethwallet.utils import get_wallet_password, eth2wei
 logger = getPrettyLogger(__name__)
 
 
-def create_address(user, base_address=False):
+def create_address(user, is_base_address=False):
     client = get_rpc_client(host=settings.ETHNODE_URL)
 
     password = get_wallet_password(user.wallet_secret_key)
 
-    address = Address(owner=user, is_base_address=base_address)
+    address = Address(owner=user, is_base_address=is_base_address)
 
     address.address = client.personal_newAccount(password=password)
     address.save()

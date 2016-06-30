@@ -16,4 +16,4 @@ def user_post_save(sender, instance, *args, **kwargs):
     user = instance
 
     user.wallet_secret_key = generate_token()
-    create_address(user, base_address=True)
+    create_address(user, is_base_address=True)

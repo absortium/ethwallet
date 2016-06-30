@@ -70,12 +70,10 @@ class HMACClient(APIClient):
         self.api_key = user.api_key
 
     def credentials(self, **kwargs):
-        print("KWARGS:".format(kwargs))
         super().credentials(**kwargs)
 
     def request(self, **kwargs):
         request = super().request(**kwargs)
-        print("REQUEST: {}".format(request))
         return request
 
     @add_auth_info

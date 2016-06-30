@@ -18,7 +18,7 @@ class NotificationsTest(EthWalletUnitTest):
                 client.notify(web_hook="somewebhook", address="address", tx_hash="hash", value="1")
                 raise Exception("Something wrong! Bam!")
         except Exception:
-            self.assertEqual(self.get_notifications("somewebhook"), None)
+            self.assertEqual(self.get_notifications("somewebhook"), [])
 
     def test_notification_atomic_without_exception(self):
         """
@@ -29,6 +29,6 @@ class NotificationsTest(EthWalletUnitTest):
         with notifications.atomic():
             client = get_notify_client()
             client.notify(web_hook="somewebhook", address="address", tx_hash="hash", value="1")
-            self.assertEqual(self.get_notifications("somewebhook"), None)
+            self.assertEqual(self.get_notifications("somewebhook"), [])
 
-        self.assertNotEqual(self.get_notifications("somewebhook"), None)
+        self.assertNotEqual(self.get_notifications("somewebhook"), [])

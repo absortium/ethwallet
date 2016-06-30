@@ -45,8 +45,7 @@ class atomic:
             for notification in self.notifications:
                 args = notification['args']
                 kwargs = notification['kwargs']
-
-                logger.debug(self.client)
+                
                 self.client.notify(*args, **kwargs)
 
         set_notify_client(self.client)

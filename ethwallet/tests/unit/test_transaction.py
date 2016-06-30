@@ -1,3 +1,5 @@
+from ethwallet.utils import wei2eth
+
 __author__ = 'andrew.shvv@gmail.com'
 
 from core.utils.logging import getLogger
@@ -27,7 +29,7 @@ class TransactionTest(EthWalletUnitTest):
         t = serializer.object()
 
         self.assertEqual(t.block_number, int(transaction['blockNumber'], 16))
-        self.assertEqual(t.value, int(transaction['value'], 16))
+        self.assertEqual(t.value, wei2eth(int(transaction['value'], 16)))
         self.assertEqual(t.hash, transaction['hash'])
         self.assertEqual(t.from_address, transaction['from'])
         self.assertEqual(t.to_address, transaction['to'])
