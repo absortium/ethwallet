@@ -3,19 +3,19 @@ from core.utils.logging import getPrettyLogger
 __author__ = 'andrew.shvv@gmail.com'
 logger = getPrettyLogger(__name__)
 
-_client = None
+client = None
 
 
 def get_notify_client():
-    global _client
-    if _client is None:
-        _client = NotifyClient()
-    return _client
+    global client
+    if client is None:
+        client = NotifyClient()
+    return client
 
 
-def set_notify_client(client):
-    global _client
-    _client = client
+def set_notify_client(c):
+    global client
+    client = c
 
 
 class NotifyClient():

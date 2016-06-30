@@ -212,20 +212,19 @@ class Client(object):
             raise ClientBadHost(str(e))
 
 
-from django.conf import settings
-
-_notify_client = None
+client = None
 
 
 def get_crossbar_client(*args, **kwargs):
+    from django.conf import settings
     url = settings.ROUTER_URL
 
-    global _notify_client
-    if _client is None:
-        _client = Client(url, *args, **kwargs)
-    return _client
+    global client
+    if client is None:
+        client = Client(url, *args, **kwargs)
+    return client
 
 
-def set_crossbar_client(client):
-    global _notify_client
-    _client = client
+def set_crossbar_client(c):
+    global client
+    client = c

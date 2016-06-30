@@ -1,26 +1,24 @@
 import warnings
 
+from core.utils.logging import getPrettyLogger
 from .constants import BLOCK_TAGS, BLOCK_TAG_LATEST
 from .exceptions import (BadRequest, BadResponse)
 from .interfaces import HTTPInterface, IPCInterface
 from .utils import hex_to_dec, validate_block
 
-_notify_client = None
-
-from core.utils.logging import getPrettyLogger
-
 logger = getPrettyLogger(__name__)
 
-_client = None
+client = None
+
 
 def get_rpc_client(interface="tcp", *args, **kwargs):
-    global _client
-    if _client is None:
+    global client
+    if client is None:
         if interface == "tcp":
-            _client = RPCClient(interface=HTTPInterface(*args, **kwargs))
+            client = RPCClient(interface=HTTPInterface(*args, **kwargs))
         elif interface == "ipc":
-            _client = RPCClient(interface=IPCInterface(*args, **kwargs))
-    return _client
+            client = RPCClient(interface=IPCInterface(*args, **kwargs))
+    return client
 
 
 class RPCClient():
