@@ -22,7 +22,7 @@ def create_address(user, base_address=False):
 
     password = get_wallet_password(user.wallet_secret_key)
 
-    address = Address(owner=user, base_address=base_address)
+    address = Address(owner=user, is_base_address=base_address)
 
     address.address = client.personal_newAccount(password=password)
     address.save()
@@ -60,7 +60,7 @@ def send(request, *args, **kwargs):
     except ValueError:
         raise ValidationError("'amount' field should be 'int' deserializable")
 
-    base_address = Address.objects.get(base_address=True, owner_id=request.user.pk)
+    base_address = Address.objects.get(is_base_address=True, owner_id=request.user.pk)
 
     context = {
         'user_pk': request.user.pk,

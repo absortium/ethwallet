@@ -23,9 +23,13 @@ class ClientUser(AbstractUser):
 
     wallet_secret_key = models.TextField()
 
+    @property
+    def base_address(self):
+        return Address.objects.get(owner=self, is_base_address=True)
+
 
 class Address(models.Model):
-    address = models.CharField(max_length=constants.ADDRESS_LEN, primary_key=True, null=True)
+    address = models.CharField(max_length=constants.ADDRESS_LEN, primary_key=True)
 
     created = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="addresses")

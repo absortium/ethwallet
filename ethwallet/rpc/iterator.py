@@ -2,8 +2,11 @@ __author__ = 'andrew.shvv@gmail.com'
 
 from django.conf import settings
 
+from core.utils.logging import getPrettyLogger
 from ethwallet.models import Block
 from ethwallet.rpc.client import get_rpc_client
+
+logger = getPrettyLogger(__name__)
 
 
 class BlockChainIterator():
@@ -33,7 +36,9 @@ class BlockChainIterator():
         return block
 
     def forward(self):
+        logger.debug("Forward {}".format(self.number))
         self.number += 1
 
     def back(self):
+        logger.debug("Back {}".format(self.number))
         self.number -= 1

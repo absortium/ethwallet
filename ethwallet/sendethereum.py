@@ -30,10 +30,10 @@ class atomic:
     """
 
     client = None
-    notifications = None
+    operations = None
 
     def __enter__(self):
-        self.notifications = []
+        self.operations = []
         self.client = get_send_client()
 
         set_send_client(self)
@@ -42,13 +42,13 @@ class atomic:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not exc_val:
-            for notification in self.notifications:
-                args = notification['args']
-                kwargs = notification['kwargs']
+            for operation in self.operations:
+                args = operation['args']
+                kwargs = operation['kwargs']
 
-                self.client.notify(*args, **kwargs)
+                self.client.send(*args, **kwargs)
 
                 set_send_client(self.send)
 
     def send(self, *args, **kwargs):
-        self.notifications.append({'args': args, 'kwargs': kwargs})
+        self.operations.append({'args': args, 'kwargs': kwargs})

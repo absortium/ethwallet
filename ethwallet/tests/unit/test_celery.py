@@ -1,7 +1,10 @@
+from ethwallet import constants
+
 __author__ = 'andrew.shvv@gmail.com'
+import mock
 
 from core.utils.logging import getLogger
-from ethwallet.celery.tasks import check_block
+from ethwallet.celery.tasks import check_block, notify_user
 from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.models import Block, Transaction
 from ethwallet.tests.base import EthWalletUnitTest
@@ -14,111 +17,129 @@ class EthnodeTest(EthWalletUnitTest):
         super().setUp()
 
         # Create address
-        self.address = self.create_address(debug=True)
+        self.address = self.create_address()["address"]
+
         self.notification_flush()
+        self.flush_rpc_state()
+
+        # Create first block
+        check_block.delay()
 
     def tearDown(self):
         super().tearDown()
 
-    def _init_node_data(self, start=0, end=1, need_transaction=True):
-        blocks = []
+    def test_block_chain_mixin(self):
+        self.change_block_chain(
+            self.add_block(
+                ("1", self.address, "2"),
+                ("1", self.address, "2"),
+                ("1", self.address, "2")
+            )
+        )
 
-        for i in range(start, end):
-            block = {
-                "hash": hex(i),
-                "number": hex(i),
-                "parentHash": hex(i - 1) if i > 0 else hex(0),
-                "timestamp": "0x5735223a"
-            }
+        self.assertEqual(len(self.get_block_chain()), 2)
 
-            if need_transaction:
-                block.update(transactions=[
-                    {
-                        "blockNumber": hex(i),
-                        "from": hex(i),
-                        "hash": hex(i),
-                        "to": self.address["address"],
-                        "value": "0x1"
-                    }
-                ])
+    def test_block_chain_iterator(self):
+        self.change_block_chain(
+            self.add_block(
+                ("1", self.address, "2"),
+                ("1", self.address, "2"),
+                ("1", self.address, "2")
+            )
+        )
 
-            blocks.append(block)
+        check_block.delay()
+        self.assertEqual(len(Block.objects.all()), 2)
 
-        # Set rpc data which will be returned by RPC client.
-        self.set_rpcclient_data(blocks=blocks)
-
-    def _init_db_data(self, start=0, end=1, diff_hashes=False, need_transaction=True):
-        for i in range(start, end):
-            if diff_hashes:
-                b = Block(number=i, hash="some another hash {}".format(hex(i)))
-            else:
-                b = Block(number=i, hash=hex(i))
-
-            for t in Transaction.objects.all():
-                confirmations = b.number - t.block_number + 1
-                if confirmations >= CONFIRMATIONS_FOR_NOTIFICATION:
-                    t.notified = True
-                    t.save()
-
-            b.save()
-
-            if need_transaction:
-                t = Transaction(from_address=hex(i),
-                                to_address=self.address["address"],
-                                value=0x01,
-                                hash=hex(i),
-                                owner_id=self.user.pk,
-                                block_number=i)
-                t.save()
-
-    def test_the_same_hash(self):
-        """
-            Test case with the same last hashes and last updated block. We should hang up couple of new blocks.
-        """
-        self._init_node_data(end=3)
-        self._init_db_data(end=1)
-
-        # Simulate celery task execution
+    def test_count_of_transactions(self):
+        self.change_block_chain(
+            self.add_block(
+                ("1", self.address, "2"),
+                ("1", self.address, "2"),
+                ("1", self.address, "2")
+            )
+        )
         check_block.delay()
 
-    def test_the_different_hash(self):
-        """
-            Test case with the same last hashes but not full history of blocks. We should roll back for a couple of blocks
-            and then catch up.
-        """
+        transactions = Transaction.objects.filter(owner=self.user)
+        self.assertEqual(len(transactions), 3)
 
-        self._init_node_data(end=5)
-        self._init_db_data(end=2)
-        self._init_db_data(start=2, end=5, diff_hashes=True)
-
-        # Simulate celery task execution
+    def test_count_of_transactions_another(self):
+        self.change_block_chain(
+            self.add_block(
+                ("1", "some another address", "2"),
+                ("1", "some another address", "2"),
+                ("1", "some another address", "2")
+            )
+        )
         check_block.delay()
 
-        transactions = Transaction.objects.all()
-        self.assertEqual(len(transactions), 5)
+        transactions = Transaction.objects.filter(owner=self.user)
+        self.assertEqual(len(transactions), 0)
 
-    def test_the_transaction_notification(self):
-        """
-            Test case where transaction confirmation exceed number of confirmation is needed for its notification.
-        """
+    def test_notification_count(self):
+        base_address = self.user.base_address.address
 
-        transaction_value = 1
-        count_of_transaction = 10
-        count_of_blocks = count_of_transaction
-        count_of_notifications = count_of_blocks - CONFIRMATIONS_FOR_NOTIFICATION + 1
-        sum_value = count_of_notifications * transaction_value
-
-        self._init_node_data(end=count_of_blocks)
-        self._init_db_data(end=1)
-
-        # Simulate celery task execution
+        self.change_block_chain(
+            self.add_block(
+                ("1", base_address, "2"),
+                ("1", base_address, "2"),
+                ("1", base_address, "2")
+            )
+        )
         check_block.delay()
 
-        notifications = self.get_notifications(self.user.web_hook)
-        self.assertNotEqual(notifications, None)
+        self.assertEqual(len(self.get_notifications()), 3)
 
-        notifications = notifications[self.address["address"]]
-        self.assertEqual(len(notifications), count_of_notifications)
+    @mock.patch('requests.post', mock.Mock())
+    def test_notify_user(self):
+        # Create transaction
+        t = Transaction.objects.create(from_address="1",
+                                       to_address="2",
+                                       value=100,
+                                       block_number=1,
+                                       notification_status=constants.NOTIFICATION_PENDING,
+                                       owner_id=self.user.pk)
 
-        values = [value for _, value in notifications]
-        self.assertEqual(sum_value, sum(values))
+        # Process this transaction
+        notify_user.delay(t.pk)
+
+        self.assertEqual(Transaction.objects.get(pk=t.pk).notification_status, constants.NOTIFICATION_DONE)
+
+    def test_block_fork(self):
+        base_address = self.user.base_address.address
+
+        self.change_block_chain(self.add_block())
+        check_block.delay()
+
+        self.change_block_chain(self.add_block(), fork=True)
+        check_block.delay()
+
+        self.assertEqual(len(Block.objects.all()), 2)
+
+    def test_same_transaction_in_two_blocks_1(self):
+        base_address = self.user.base_address.address
+
+        self.change_block_chain(self.add_block(("1", base_address, "2", "some_hash")))
+        check_block.delay()
+
+        self.change_block_chain(self.add_block(("1", base_address, "2", "some_hash")), fork=True)
+        check_block.delay()
+
+        self.assertEqual(len(self.get_notifications()), 1)
+        self.assertEqual(len(Transaction.objects.all()), 1)
+
+    def test_not_base_address(self):
+        self.change_block_chain(self.add_block(("1", self.address, "2")))
+        check_block.delay()
+
+        self.assertEqual(len(self.get_notifications()), 0)
+
+    def test_same_transaction_in_two_blocks_2(self):
+        self.change_block_chain(self.add_block(("1", self.address, "2", "some_hash")))
+        check_block.delay()
+
+        self.change_block_chain(self.add_block(("1", self.address, "2", "some_hash")), fork=True)
+        check_block.delay()
+
+        self.assertEqual(len(self.get_notifications()), 0)

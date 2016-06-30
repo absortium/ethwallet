@@ -6,7 +6,7 @@ __author__ = 'andrew.shvv@gmail.com'
 
 logger = getLogger(__name__)
 
-_notifications = {}
+notifications = []
 
 
 class NotificationMockMixin():
@@ -19,19 +19,12 @@ class NotificationMockMixin():
         self._notify_patcher = None
 
     def get_notifications(self, url=None):
-        global _notifications
-
-        if url is None:
-            return _notifications
-        else:
-            try:
-                return _notifications[url]
-            except KeyError:
-                return None
+        global notifications
+        return notifications
 
     def notification_flush(self):
-        global _notifications
-        _notifications = {}
+        global notifications
+        notifications = []
 
     def mock_notification(self):
         mock = MagicMock(return_value=MockClient())
@@ -43,6 +36,10 @@ class NotificationMockMixin():
 
 
 class MockClient():
-    def notify(self, web_hook, address, tx_hash, value):
-        global _notifications
-        _notifications.setdefault(web_hook, {}).setdefault(address, []).append((tx_hash, value))
+    def notify(self, *args, **kwargs):
+        global notifications
+        notifications.append({
+            'func': "notify",
+            'args': args,
+            'kwargs': kwargs
+        })

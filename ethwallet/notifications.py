@@ -41,11 +41,12 @@ class atomic:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if not exc_val:
+        if exc_val is None:
             for notification in self.notifications:
                 args = notification['args']
                 kwargs = notification['kwargs']
 
+                logger.debug(self.client)
                 self.client.notify(*args, **kwargs)
 
         set_notify_client(self.client)

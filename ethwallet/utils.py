@@ -11,7 +11,10 @@ from string import printable
 from django.conf import settings
 from rest_framework.test import APIClient
 
+from core.utils.logging import getPrettyLogger
 from ethwallet import constants
+
+logger = getPrettyLogger(__name__)
 
 __author__ = 'andrew.shvv@gmail.com'
 
@@ -20,8 +23,8 @@ def random_string(length=30):
     return "".join([choice(printable) for _ in range(length)])
 
 
-def generate_token():
-    return hashlib.sha1(os.urandom(128)).hexdigest()
+def generate_token(length=128):
+    return hashlib.sha1(os.urandom(length)).hexdigest()
 
 
 def get_wallet_password(key):
@@ -98,3 +101,24 @@ def wei2eth(value):
 
 def eth2wei(value):
     return Decimal(value) * constants.WEI_INT_ETH
+
+
+def register(operations, debug=False):
+    def wrapper(func):
+        def decorator(*args, **kwargs):
+            operation = {
+                'func': func.__name__,
+                'args': args,
+                'kwargs': kwargs
+            }
+
+            if debug:
+                logger.debug(operation)
+
+            operations.append(operation)
+
+            return func(*args, **kwargs)
+
+        return decorator
+
+    return wrapper

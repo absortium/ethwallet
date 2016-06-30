@@ -34,7 +34,7 @@ def add_new_block(block):
 def add_new_transactions(transactions):
     def deserialize(t):
         serializer = TransactionSerializer(data=t)
-        serializer.is_valid(raise_exception=ValidationError)
+        serializer.is_valid(raise_exception=True)
         return serializer.object()
 
     def send_to_base(t):
@@ -58,15 +58,12 @@ def add_new_transactions(transactions):
         if t.notification_status == constants.NOTIFICATION_INIT:
             t.notification_status = constants.NOTIFICATION_PENDING
 
-            nc.notify(web_hook=t.owner.web_hook,
-                      address=t.from_address,
-                      tx_hash=t.hash,
-                      value=t.value)
+            nc.notify(tx_pk=t.pk)
 
     for t in transactions:
         try:
             t = deserialize(t)
-        except ValidationError:
+        except ValidationError as e:
             continue
 
         try:
@@ -74,25 +71,14 @@ def add_new_transactions(transactions):
         except Address.DoesNotExist:
             continue
 
-        try:
-            # This case means that we already proceed the transaction, which
-            # may happens in blockchain fork situation, so if we encounter this situation
-            # we should change transaction block number, to which it belongs now.
-
-            st = Transaction.objects.filter(hash=t.hash)
-            st.block_number = t.block_number
-
-        except Transaction.DoesNotExist:
-            st = t
-            st.owner = address.owner
+        t.owner = address.owner
 
         if address.is_base_address:
-            send_notifications(st)
+            send_notifications(t)
+        elif not t.is_spent:
+            send_to_base(t)
 
-        elif not st.is_spent:
-            send_to_base(st)
-
-        st.save()
+        t.save()
 
 
 @shared_task(bind=True, base=get_base_class())
@@ -100,7 +86,6 @@ def check_block(self):
     block_chain = BlockChainIterator()
 
     for block in block_chain:
-
         with notifications.atomic():
             with sendethereum.atomic():
                 with transaction.atomic():
@@ -124,7 +109,6 @@ def check_block(self):
 @shared_task(bind=True, max_retries=constants.SEND_MAX_RETRIES, base=get_base_class())
 def send(self, user_pk, from_address, to_address, value):
     try:
-        value = eth2wei(value)
 
         User = get_user_model()
         user = User.objects.get(pk=user_pk)
@@ -135,6 +119,7 @@ def send(self, user_pk, from_address, to_address, value):
         client.personal_unlockAccount(address=from_address, passphrase=password)
 
         balance = client.eth_getBalance()
+        value = eth2wei(value)
 
         if balance >= value:
             client.eth_sendTransaction(from_address=from_address,

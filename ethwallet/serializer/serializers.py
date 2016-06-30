@@ -46,7 +46,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transaction
-        fields = ('from_address', 'to_address', 'value', 'block_number', 'hash')
+        fields = ('from_address', 'to_address', 'value', 'block_number', 'hash', 'notification_status')
 
     def __init__(self, *args, **kwargs):
         kwargs['data'] = TransactionSerializer.normalize(kwargs['data'])
