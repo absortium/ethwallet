@@ -1,3 +1,5 @@
+from ethwallet.utils import eth2wei
+
 __author__ = 'andrew.shvv@gmail.com'
 
 from decimal import Decimal
@@ -25,8 +27,11 @@ ADDRESS_LEN = 50
 
 API_KEY_LEN = 40
 API_SECRETS_LEN = 40
+WALLET_SECRET_KEY_LEN = 40
 WEBHOOK_LEN = 110
 HASH_LEN = 100
+
+TX_FEE = Decimal("0.01")
 
 NOTIFICATION_INIT = 0
 NOTIFICATION_PENDING = 1

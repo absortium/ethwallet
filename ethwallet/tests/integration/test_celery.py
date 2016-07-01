@@ -1,15 +1,18 @@
 import time
+from django.contrib.auth import get_user_model
+
+from ethwallet import constants
+from ethwallet.utils import wei2eth, truncate
 
 __author__ = 'andrew.shvv@gmail.com'
 
 from django.conf import settings
 
 from core.utils.logging import getLogger
-from ethwallet.models import Address, Transaction
+from ethwallet.models import Address
 from ethwallet.rpc.client import RPCClient
 from ethwallet.rpc.interfaces import HTTPInterface
 from ethwallet.tests.base import EthWalletLiveTest
-from ethwallet.celery import tasks
 
 logger = getLogger(__name__)
 
@@ -18,47 +21,45 @@ class AccuracyTest(EthWalletLiveTest):
     def setUp(self):
         super().setUp()
 
-        # Create Address with coinbase address in order to have ability to send transaction from it.
-        self.rpcclient = RPCClient(HTTPInterface(host=settings.ETHNODE_URL))
-        self.coinbase = self.rpcclient.eth_coinbase()
+        self.rpc = RPCClient(HTTPInterface(host=settings.ETHNODE_URL))
+        self.coinbase = self.rpc.eth_coinbase()
 
-        # Be careful, do not change key argument because it is used for generating the address password,
-        # otherwise you will have to recreate the address with preallocated amount of ethereum.
-        address = Address(address=self.coinbase, owner_id=self.user.pk, key="somekey")
-        address.save()
+        # Make alias
+        self.primary = self.user
+
+        # Make coinbase address base address of the primary user.
+        address = Address.objects.get(owner=self.primary, is_base_address=True)
+        address.update(address=self.coinbase)
 
     def test_send_transactions(self, *args, **kwargs):
         """
             In order to execute this test celery worker should use django test db, for that you should set
             the CELERY_TEST=True environment variable in the worker(celery) service. See docker-compose.yml
         """
-        tasks.check_block.delay()
 
-        coinbase_balance = self.rpcclient.eth_getBalance(address=self.coinbase)
+        # Create secondary user
+        User = get_user_model()
+        user = User(username="secondary",
+                    web_hook="http://somewebhook.com",
+                    wallet_secret_key="secret")
+        self.secondary = user
+        user.save()
 
-        addresses = []
+        # Create secondary user address to which we will send ethereum
+        self.client.force_authenticate(self.secondary)
+        address = self.create_address()['address']
 
-        count_of_transaction = 5
-        amount = int(coinbase_balance / count_of_transaction)
-        for _ in range(count_of_transaction):
-            address = self.create_address()['address']
-            self.send_eth(to_address=address,
-                          amount=amount,
-                          debug=True)
-            addresses.append(address)
+        # Auth as primary and send ethereum
+        self.client.force_authenticate(self.primary)
 
-        times = 5
-        for _ in range(times):
-            tasks.check_block.delay()
-            time.sleep(10)
+        # Calculate the transaction amount
+        amount = wei2eth(self.rpc.eth_getBalance(address=self.primary.base_address.address))
+        self.send_eth(address=address, amount=amount)
 
-        for address in addresses:
-            balance = self.rpcclient.eth_getBalance(address=address, block='pending')
-            self.assertEqual(balance, amount)
+        # Wait while blocks will be proceed by ethereum node
+        time.sleep(30)
 
-        transactions = Transaction.objects.all()
-        self.assertEqual(len(transactions), count_of_transaction)
+        secondary_balance = self.rpc.eth_getBalance(address=self.secondary.base_address.address)
 
-        for transaction in transactions:
-            self.assertEqual(transaction.value, amount)
-            self.assertEqual(transaction.notified, True)
+        # Coefficient '2' because amount pass two accounts. So two transactions = double tx_fee.
+        self.assertEqual(wei2eth(secondary_balance), truncate(amount - 2 * constants.TX_FEE, constants.DECIMAL_PLACES))

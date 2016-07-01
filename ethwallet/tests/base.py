@@ -27,6 +27,9 @@ class EthWalletTestMixin():
 
         return results[0]
 
+    def interrupt(self):
+        input("To continue press some button:")
+
 
 class EthWalletLiveTest(APITransactionTestCase,
                         AddressMixin,
@@ -35,7 +38,9 @@ class EthWalletLiveTest(APITransactionTestCase,
         super().setUp()
 
         User = get_user_model()
-        user = User(username="primary", password="test", web_hook="www.somewebhook.com")
+
+        # Be careful, do not change wallet_secret_key argument because it is used for generating the address password.
+        user = User(username="primary", web_hook="www.somewebhook.com", wallet_secret_key="secret")
         user.save()
 
         self.user = user

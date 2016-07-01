@@ -48,7 +48,7 @@ class atomic:
 
                 self.client.send(*args, **kwargs)
 
-                set_send_client(self.send)
+        set_send_client(self.client)
 
     def send(self, *args, **kwargs):
         self.operations.append({'args': args, 'kwargs': kwargs})

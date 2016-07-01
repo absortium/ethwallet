@@ -23,16 +23,14 @@ class AddressMixin():
 
         return response.json()
 
-    def send_eth(self, amount, to_address, user=None, debug=False, with_checks=True):
-        self.assertEqual(type(amount), int)
-
+    def send_eth(self, amount, address, user=None, debug=False, with_checks=True):
         if user:
             # Authenticate normal user
             self.client.force_authenticate(user)
 
         data = {
-            "address": to_address,
-            "amount": amount
+            "address": address,
+            "amount": str(amount)
         }
 
         response = self.client.post('/v1/send/', format='json', data=data)
@@ -42,5 +40,3 @@ class AddressMixin():
 
         if with_checks:
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        return response.json()

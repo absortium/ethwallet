@@ -11,15 +11,17 @@ class EthWalletConfig(AppConfig):
         super(EthWalletConfig, self).ready()
 
         from ethwallet import signals
-        from django.conf import settings
 
-        if settings.CELERY_TEST:
+        from django.conf import settings
+        if settings.MODE in ['frontend', 'integration']:
             """
                 Because celery run in another process we should manually mock
-                what we need when we test celery in integrity tests.
+                what we need when we test celery in integration mode.
             """
-            from ethwallet.tests.mixins.celery import CeleryMockMixin
-            from ethwallet.tests.mixins.notification import NotificationMockMixin
 
-            CeleryMockMixin().mock_celery()
+            if settings.MODE == 'integration':
+                from ethwallet.tests.mixins.celery import CeleryMockMixin
+                CeleryMockMixin().mock_celery()
+
+            from ethwallet.tests.mixins.notification import NotificationMockMixin
             NotificationMockMixin().mock_notification()

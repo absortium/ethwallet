@@ -14,6 +14,4 @@ logger = getPrettyLogger(__name__)
 @receiver(post_save, sender=get_user_model(), dispatch_uid="user_post_save")
 def user_post_save(sender, instance, *args, **kwargs):
     user = instance
-
-    user.wallet_secret_key = generate_token()
     create_address(user, is_base_address=True)

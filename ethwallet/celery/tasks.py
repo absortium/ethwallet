@@ -41,6 +41,8 @@ def add_new_transactions(transactions):
         # If we receive new transaction from some external ethereum address than we should redirect ethereum
         # on base user account.
 
+        logger.debug("send_to_base")
+
         sc = get_send_client()
 
         base_user_address = Address.objects.get(owner=t.owner, is_base_address=True)
@@ -75,7 +77,7 @@ def add_new_transactions(transactions):
 
         if address.is_base_address:
             send_notifications(t)
-        elif not t.is_spent:
+        else:
             send_to_base(t)
 
         t.save()
@@ -118,13 +120,17 @@ def send(self, user_pk, from_address, to_address, value):
         client = get_rpc_client(host=settings.ETHNODE_URL)
         client.personal_unlockAccount(address=from_address, passphrase=password)
 
-        balance = client.eth_getBalance()
+        balance = client.eth_getBalance(from_address)
         value = eth2wei(value)
+        fee = eth2wei(constants.TX_FEE)
 
         if balance >= value:
-            client.eth_sendTransaction(from_address=from_address,
-                                       to_address=to_address,
-                                       value=value)
+            if value > fee:
+                client.eth_sendTransaction(from_address=from_address,
+                                           to_address=to_address,
+                                           value=value - fee)
+            else:
+                raise ValidationError("Fee higher than 'value' itself")
         else:
             raise ValidationError("Not enough money")
 

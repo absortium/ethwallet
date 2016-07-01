@@ -4,10 +4,11 @@ import hmac
 import json
 import os
 import time
-from decimal import Decimal
+from decimal import Decimal, localcontext, ROUND_DOWN
 from random import choice
 from string import printable
 
+import math
 from django.conf import settings
 from rest_framework.test import APIClient
 
@@ -94,11 +95,11 @@ class HMACClient(APIClient):
 
 
 def wei2eth(value):
-    return round(Decimal(value) / constants.WEI_INT_ETH, constants.DECIMAL_PLACES)
+    return truncate(Decimal(value) / constants.WEI_INT_ETH, constants.DECIMAL_PLACES)
 
 
 def eth2wei(value):
-    return Decimal(value) * constants.WEI_INT_ETH
+    return int(Decimal(value) * constants.WEI_INT_ETH)
 
 
 def register(operations, debug=False):
@@ -120,3 +121,16 @@ def register(operations, debug=False):
         return decorator
 
     return wrapper
+
+
+def truncate(number, places):
+    if not isinstance(places, int):
+        raise ValueError("Decimal places must be an integer.")
+    if places < 1:
+        raise ValueError("Decimal places must be at least 1.")
+    # If you want to truncate to 0 decimal places, just do int(number).
+
+    with localcontext() as context:
+        context.rounding = ROUND_DOWN
+        exponent = Decimal(str(math.pow(10, - places)))
+        return Decimal(str(number)).quantize(exponent)

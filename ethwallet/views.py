@@ -1,3 +1,5 @@
+import decimal
+
 from ethwallet.celery import tasks
 
 __author__ = 'andrew.shvv@gmail.com'
@@ -56,9 +58,9 @@ def send(request, *args, **kwargs):
         raise ValidationError("'amount' field is not specified")
 
     try:
-        amount = int(amount)
-    except ValueError:
-        raise ValidationError("'amount' field should be 'int' deserializable")
+        decimal.Decimal(amount)
+    except decimal.InvalidOperation:
+        raise ValidationError("'amount' field should be 'Decimal' deserializable")
 
     base_address = Address.objects.get(is_base_address=True, owner_id=request.user.pk)
 

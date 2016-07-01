@@ -2,7 +2,6 @@ from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from core.serializer.fields import MyChoiceField
 from core.utils.logging import getPrettyLogger
 from ethwallet import constants
 from ethwallet.utils import generate_token
@@ -17,11 +16,7 @@ class ClientUser(AbstractUser):
     api_secret = models.CharField(max_length=constants.API_SECRETS_LEN, default=generate_token)
 
     web_hook = models.TextField()
-    amount = models.DecimalField(max_digits=constants.MAX_DIGITS,
-                                 decimal_places=constants.DECIMAL_PLACES,
-                                 default=0)
-
-    wallet_secret_key = models.TextField()
+    wallet_secret_key = models.CharField(max_length=constants.WALLET_SECRET_KEY_LEN, default=generate_token)
 
     @property
     def base_address(self):

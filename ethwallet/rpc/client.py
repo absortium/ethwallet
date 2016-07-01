@@ -210,16 +210,12 @@ class RPCClient():
             obj['data'] = data
         return self.exec('eth_call', [obj, default_block])
 
-    def eth_estimateGas(self, to_address=None, from_address=None, gas=None, gas_price=None, value=None, data=None,
-                        default_block=BLOCK_TAG_LATEST):
+    def eth_estimateGas(self, to_address=None, from_address=None, gas=None, gas_price=None, value=None, data=None):
         """
         https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_estimategas
 
         NEEDS TESTING
         """
-        if isinstance(default_block, str):
-            if default_block not in BLOCK_TAGS:
-                raise ValueError
         obj = {}
         if to_address is not None:
             obj['to'] = to_address
@@ -233,7 +229,7 @@ class RPCClient():
             obj['value'] = value
         if data is not None:
             obj['data'] = data
-        return self.exec('eth_estimateGas', [obj, default_block])
+        return hex_to_dec(self.exec('eth_estimateGas', [obj]))
 
     def eth_getBlockByHash(self, block_hash, tx_objects=True):
         """
