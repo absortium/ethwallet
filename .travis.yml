@@ -3,15 +3,35 @@ sudo: required
 services:
   - docker
 
+env:
+    global:
+        - DOCKER_COMPOSE_VERSION=1.8.0-rc1
+
 before_install:
-- git clone --recursive https://github.com/absortium/deluge.git
-- pushd deluge
-- pushd services/ethwallet
-- git checkout $TRAVIS_BRANCH
-- git pull
-- popd
-- touch .sensitive
-- echo "DJANGO_SECRET_KEY='django_secret_key'" >> .sensitive
-- echo "POSTGRES_PASSWORD='postgres'" >> .sensetive
+  # Reinstall docker-compose at specific version
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+
+  # Check docker and docker-compose versions
+  - docker version
+  - docker-compose version
+
+  # Clone `deluge` project
+  - git clone --recursive https://github.com/absortium/deluge.git
+  - pushd deluge
+
+  # Checkout and pull changes of `ethwallet` service.
+  - pushd services/ethwallet
+  - git checkout $TRAVIS_BRANCH
+  - git pull
+  - popd
+
+  # Create mock .sensitive
+  - touch .sensitive
+  - echo "DJANGO_SECRET_KEY='django_secret_key'" >> .sensitive
+  - echo "POSTGRES_PASSWORD='postgres'" >> .sensitive
+
 script:
-- ./useful/install.sh ethwallet
+  - ./useful/install.sh ethwallet
