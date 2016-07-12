@@ -1,0 +1,17 @@
+sudo: required
+
+services:
+  - docker
+
+before_install:
+- git clone --recursive https://github.com/absortium/deluge.git
+- pushd deluge
+- pushd services/ethwallet
+- git checkout $TRAVIS_BRANCH
+- git pull
+- popd
+- touch .sensitive
+- echo "DJANGO_SECRET_KEY='django_secret_key'" >> .sensitive
+- echo "POSTGRES_PASSWORD='postgres'" >> .sensetive
+script:
+- ./useful/install.sh ethwallet
