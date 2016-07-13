@@ -7,35 +7,31 @@ env:
     global:
         - DOCKER_VERSION=1.10.1-0~trusty
         - DOCKER_COMPOSE_VERSION=1.8.0-rc1
+        - SERVICE=ethwallet
 
 before_install:
+  # Clone `deluge` project
+  - git clone --recursive https://github.com/absortium/deluge.git
+  - pushd deluge
+
+  # Create mock .sensitive
+  - ./useful/create_mock_sensitive.sh
+
   # upgrade docker-engine to specific version
-  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=${DOCKER_VERSION}
+  - ./useful/upgrade_docker_engine.sh
 
   # Reinstall docker-compose at specific version
-  - sudo rm /usr/local/bin/docker-compose
-  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
-  - chmod +x docker-compose
-  - sudo mv docker-compose /usr/local/bin
+  - ./useful/upgrade_docker_compose.sh
 
   # Check docker and docker-compose versions
   - docker version
   - docker-compose version
 
-  # Clone `deluge` project
-  - git clone --recursive https://github.com/absortium/deluge.git
-  - pushd deluge
-
   # Checkout and pull changes of `ethwallet` service.
-  - pushd services/ethwallet
+  - pushd "services/$SERVICE"
   - git checkout $TRAVIS_BRANCH
   - git pull
   - popd
 
-  # Create mock .sensitive
-  - touch .sensitive
-  - echo "DJANGO_SECRET_KEY='django_secret_key'" >> .sensitive
-  - echo "POSTGRES_PASSWORD='postgres'" >> .sensitive
-
 script:
-  - ./useful/install.sh ethwallet
+  - ./useful/install.sh "$SERVICE"
