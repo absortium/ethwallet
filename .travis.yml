@@ -5,7 +5,7 @@ services:
 
 env:
     global:
-        - DOCKER_VERSION=1.10.1-0~trusty
+        - DOCKER_VERSION=1.11.2-0~trusty
         - DOCKER_COMPOSE_VERSION=1.8.0-rc1
         - SERVICE=ethwallet
 
@@ -17,21 +17,18 @@ before_install:
   # Create mock .sensitive
   - ./useful/create_mock_sensitive.sh
 
-  # upgrade docker-engine to specific version
+  # list docker-engine versions
+  - apt-cache madison docker-engine
+
+  # Upgrade docker-engine to specific version
   - ./useful/upgrade_docker_engine.sh
 
-  # Reinstall docker-compose at specific version
+  # Upgrade docker-compose to specific version
   - ./useful/upgrade_docker_compose.sh
 
   # Check docker and docker-compose versions
   - docker version
   - docker-compose version
 
-  # Checkout and pull changes of `ethwallet` service.
-  - pushd "services/$SERVICE"
-  - git checkout $TRAVIS_BRANCH
-  - git pull
-  - popd
-
 script:
-  - ./useful/install.sh "$SERVICE"
+  - ./useful/install.sh "$SERVICE" "$TRAVIS_BRANCH"
