@@ -3,32 +3,45 @@ sudo: required
 services:
   - docker
 
+branches:
+  only:
+    - master
+    - development
+
 env:
     global:
         - DOCKER_VERSION=1.11.2-0~trusty
         - DOCKER_COMPOSE_VERSION=1.8.0-rc1
         - SERVICE=ethwallet
 
+        # DOCKER_USERNAME
+        - secure: "Y7/gKU0r8Bg68ONEkvb5TH1i8ZgxxXjzCAlXTjGacsZ3eB9l4I/dkZc2ahX/kMqhn14kyYFObcCLAodgUHUH5eLTv5zvu+sLu/qOj1o90UA6qaAZu1HFe5JvbcDLbYuALCBIY6hMDopVvIbVbz/6NlPeUoC9A8GpIfG9Y27ognZw1YzRlyXKTclJTVXNoCwoIk5+6n4m3ft5TsXf0TyINE3xYYjCggk9nQvHY6yTzDMZDczuBO0Yx8dNaOpBuK03ojHofPscyssQSs+3jADX8/cVZ8RKIG3G3jGp5B/w8wEpNbA0odDRSnD1xK1UJdq6Ektzvj4lGKyitNJFbN6djcBBmdVCS8wXxkEB9al6WT3+dWbOTiPsJxx1SPOHBfFIe2Kp7Wl2kG8hm123QBBX+l5LCcufKDXAFkQgMaf53dScx6TrHqj+m8fnxRgAGZYcwFKypVRcyeY1DnN2GEPLqb6pEvaCOsJPNjtMi+djoAYcuvC4jDQrV+bqBGrT7uIgJV7ujucLPOv777RZ8h8+hZIha4USk8d0YgRDuxIl5n0EofpJJd4QFuvtH75nVDRsfG1E0yqRjldg3B3CCcV7ApJkuspxqBlQJkbAUMs95DRcpetDDYRqXmbFJOQydIVY8SemK3dplX6odTodSxIu5FOXsL+U+wmElqwVsZkwiAg="
+
+        # DOCKER_PASS
+        - secure: "BpGcqcKDBAEh8Pm4mh1atic0bi+w1Z5bVBgBKkPW7w3tF7WxJInJ3R5BTmNb2ErBUO3YDmj7sp4hXzlYxLl8NJKekrIF314XU3VOYjNMB2NocfVkEeldnZCHovZqbi6DOn+EISto2S2IWdNbPDq56bdaCAShwMJnEAWsmuZrSvOfmwCqqIUh6twZ5XMsOVEzKf1LXRyl6BFSg8D9evozncGFDAKQR9/wYgG3BHMi6VtDx6y4LZMJriOTTtpXY5qrgW7UQs2UalhDRRfc6QgStkr0QcuA2uFzONzG9nEjUoVLodlw9pcX10PCnreOh+bMxxty4O4pP4Z7FgYP7AuTfUvnRHrHc+wjhV2J5T3WT7MVhkvzm1Q1xnQCfUM2/QesqVgGlkbC7jcBGYjlPwQ2cDPEW5MNh8j6AHUyHv5B8qWQj2yA1iMF1Hn2kuebu02pOtMqhor6eBfAR/PL6rsMJ29+DkVE3wJwWUcfBwOd1YUc99a7uVZra16qMEf9iIUZ7ApoIOW4rZjpfeL7odn2hEJl7ZJu9wQSjbtkhURtbU8n4gU0kkSl1KqA96xcigrLY7HCQ6AyuUzOkTxHnm8xD+G5xvXO7sxHZedBn/+eIyY+AKoGgLv6pL7ljV/NLBzEwl98OfUtycW1qesq7jE9M/O70hY/X2GGqPfedclb6RQ="
+
+after_success: test "$TRAVIS_PULL_REQUEST" == "false" && ./useful/after_success.sh "$DOCKER_USERNAME" "$DOCKER_PASS" "$SERVICE" "$TRAVIS_BRANCH"
+
 before_install:
-  # Clone `deluge` project
+  # Clone 'deluge' project
   - git clone --recursive https://github.com/absortium/deluge.git
   - pushd deluge
 
-  # Create mock .sensitive
+  # Create mock '.sensitive'
   - ./useful/create_mock_sensitive.sh
 
-  # list docker-engine versions
+  # List docker-engine versions
   - apt-cache madison docker-engine
 
-  # Upgrade docker-engine to specific version
+  # Upgrade 'docker-engine' to specific version
   - ./useful/upgrade_docker_engine.sh
 
-  # Upgrade docker-compose to specific version
+  # Upgrade 'docker-compose' to specific version
   - ./useful/upgrade_docker_compose.sh
 
-  # Check docker and docker-compose versions
+  # Check 'docker' and 'docker-compose' versions
   - docker version
   - docker-compose version
 
 script:
-  - ./useful/install.sh "$SERVICE" "$TRAVIS_BRANCH"
+  - ./useful/install.sh "$SERVICE" "$TRAVIS_BRANCH" "$TRAVIS"

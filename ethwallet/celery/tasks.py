@@ -41,8 +41,6 @@ def add_new_transactions(transactions):
         # If we receive new transaction from some external ethereum address than we should redirect ethereum
         # on base user account.
 
-        logger.debug("send_to_base")
-
         sc = get_send_client()
 
         base_user_address = Address.objects.get(owner=t.owner, is_base_address=True)

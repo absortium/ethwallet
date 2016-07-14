@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from ethwallet import constants
 
 __author__ = 'andrew.shvv@gmail.com'
@@ -5,7 +7,6 @@ import mock
 
 from core.utils.logging import getLogger
 from ethwallet.celery.tasks import check_block, notify_user
-from ethwallet.constants import CONFIRMATIONS_FOR_NOTIFICATION
 from ethwallet.models import Block, Transaction
 from ethwallet.tests.base import EthWalletUnitTest
 
@@ -16,7 +17,7 @@ class EthnodeTest(EthWalletUnitTest):
     def setUp(self):
         super().setUp()
 
-        # Create address
+        # Create user address
         self.address = self.create_address()["address"]
 
         self.notification_flush()
@@ -63,6 +64,19 @@ class EthnodeTest(EthWalletUnitTest):
 
         transactions = Transaction.objects.filter(owner=self.user)
         self.assertEqual(len(transactions), 3)
+
+    def test_value_of_transactions(self):
+        self.change_block_chain(
+            self.add_block(
+                ("1", self.address, "2"),
+                ("1", self.address, "2"),
+                ("1", self.address, "2")
+            )
+        )
+        check_block.delay()
+
+        for transaction in Transaction.objects.filter(owner=self.user):
+            self.assertEqual(transaction.value, Decimal("2"))
 
     def test_count_of_transactions_another(self):
         self.change_block_chain(

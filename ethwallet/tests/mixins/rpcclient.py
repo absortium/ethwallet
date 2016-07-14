@@ -19,6 +19,8 @@ states = [{
     }]
 }]
 
+balances = {}
+
 operations = []
 
 
@@ -33,6 +35,11 @@ class RPCClientMockMixin():
 
     def flush_rpc_state(self):
         global states
+        global balances
+        global operations
+
+        operations = []
+        balances = {}
         states = [states[0]]
 
     def mock_rpcclient(self):
@@ -89,8 +96,10 @@ class RPCClientMockMixin():
                     "from": from_address,
                     "to": to_address,
                     "hash": tx_hash or generate_token(),
-                    "value": str(eth2wei(value))
+                    "value": hex(eth2wei(value))
                 })
+
+                balances[to_address] = balances.get(to_address, 0) + eth2wei(value)
 
             state["blocks"].append(block)
 
@@ -104,8 +113,9 @@ class MockEthRPCClient():
         super().__init__()
 
     @register(operations)
-    def eth_getBalance(self, *args, **kwargs):
-        return 1000
+    def eth_getBalance(self, from_address):
+        global balances
+        return balances[from_address]
 
     @register(operations)
     def personal_unlockAccount(self, *args, **kwargs):
