@@ -1,6 +1,6 @@
     Branch  | Status 
   --------| -------
-  master | [[![Build Status](https://travis-ci.org/absortium/ethwallet.svg?branch=master)](https://travis-ci.org/absortium/ethwallet)
+  master | [![Build Status](https://travis-ci.org/absortium/ethwallet.svg?branch=master)](https://travis-ci.org/absortium/ethwallet)
   development | [![Build Status](https://travis-ci.org/absortium/ethwallet.svg?branch=development)](https://travis-ci.org/absortium/ethwallet)
 
 
