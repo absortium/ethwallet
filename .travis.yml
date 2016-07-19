@@ -23,14 +23,17 @@ env:
 after_success: test "$TRAVIS_PULL_REQUEST" == "false" && ./useful/after_success.sh "$DOCKER_USERNAME" "$DOCKER_PASS" "$SERVICE" "$TRAVIS_BRANCH"
 
 before_install:
-  # Clone 'deluge' project
+  # Clone 'deluge' project and replace service folder.
+  - cd ..
   - git clone --recursive https://github.com/absortium/deluge.git
+  - rm -rf "deluge/services/$SERVICE"
+  - mv "$SERVICE" "deluge/services/$SERVICE"
   - pushd deluge
 
   # Create mock '.sensitive'
   - ./useful/create_mock_sensitive.sh
 
-  # List docker-engine versions
+  # List 'docker-engine' versions
   - apt-cache madison docker-engine
 
   # Upgrade 'docker-engine' to specific version
@@ -44,4 +47,4 @@ before_install:
   - docker-compose version
 
 script:
-  - ./useful/install.sh "$SERVICE" "$TRAVIS_BRANCH" "$TRAVIS"
+  - ./useful/install.sh  -s "$SERVICE"  -t "$TRAVIS"
