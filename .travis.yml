@@ -26,9 +26,10 @@ before_install:
   # Clone 'deluge' project and replace service folder.
   - cd ..
   - git clone --recursive https://github.com/absortium/deluge.git
-  - rm -rf "deluge/services/$SERVICE"
-  - mv "$SERVICE" "deluge/services/$SERVICE"
   - pushd deluge
+  - ./useful/update_submodules.sh -b "$TRAVIS_BRANCH"
+  - rm -rf "services/$SERVICE"
+  - mv "../$SERVICE" "services/$SERVICE"
 
   # Create mock '.sensitive'
   - ./useful/create_mock_sensitive.sh
